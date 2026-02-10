@@ -66,7 +66,7 @@ _INDEX_HTML = r"""<!doctype html>
       width: 960,
       height: 540,
       engineDir: "frameworks/cocos2d-html5",
-      modules: ["core"],
+      modules: ["core", "actions", "audio"],
       jsList: __JS_LIST__
     };
 
@@ -351,6 +351,8 @@ _ENGINE_SLOT_MODEL = r"""var SlotModel = {
     var baseBet = this.baseBet();
     this.state.balance = baseBet * 1000;
     this.state.betIndex = 0;
+    var levels = (this.cfg && this.cfg.math && this.cfg.math.bet_levels) ? this.cfg.math.bet_levels : [1];
+    if (!levels || !levels.length) this.cfg.math.bet_levels = [1];
     this.state.freeSpins = 0;
     this.state.inFreeSpins = false;
   },
@@ -614,26 +616,25 @@ var SlotScene = cc.Scene.extend({
   // ---------------- Background ----------------
 
   _loadBackground: function(){
-    var self = this;
     try {
       var bgFile = SlotModel.assets && (SlotModel.assets.background || SlotModel.assets.bg);
       if (!bgFile) return;
 
       var path = "res/assets/backgrounds/" + bgFile;
 
-      // Force texture load (async safe)
-      cc.textureCache.addImage(path, function(){
-        if (self._bgNode) self._bgNode.removeFromParent(true);
+      // Background file is preloaded via g_resources, so create directly.
+      if (this._bgNode) this._bgNode.removeFromParent(true);
 
-        var bg = new cc.Sprite(path);
-        bg.setPosition(480, 270);
-        self.addChild(bg, 0);
+      var bg = new cc.Sprite(path);
+      bg.setPosition(480, 270);
+      this.addChild(bg, 0);
 
-        self._fitSpriteTo(bg, 960, 540, true);
-        self.scheduleOnce(function(){ self._fitSpriteTo(bg, 960, 540, true); }, 0.05);
+      this._fitSpriteTo(bg, 960, 540, true);
+      if (typeof this.scheduleOnce === "function") {
+        this.scheduleOnce(function(){ this._fitSpriteTo(bg, 960, 540, true); }.bind(this), 0.05);
+      }
 
-        self._bgNode = bg;
-      });
+      this._bgNode = bg;
     } catch (e) {}
   },
 
@@ -880,15 +881,16 @@ var SlotScene = cc.Scene.extend({
     var cellW = 120;
     var cellH = 90;
 
-    // auto-fit: if rows=6 it may push; reduce a bit
-    if (rows >= 5) cellH = 78;
-    if (rows >= 6) cellH = 70;
+    // auto-fit keeps grid clear of bottom controls
+    if (rows >= 4) cellH = 82;
+    if (rows >= 5) cellH = 74;
+    if (rows >= 6) cellH = 66;
 
     var frameW = Math.floor(cellW * 0.9);
     var frameH = Math.floor(cellH * 0.86);
 
     var startX = 480 - ((reels - 1) * cellW) / 2;
-    var startY = 270 - ((rows - 1) * cellH) / 2;
+    var startY = 300 - ((rows - 1) * cellH) / 2;
 
     this._cellW = cellW;
     this._cellH = cellH;
@@ -1033,7 +1035,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.balance.setString(I18N.t("balance","Balance") + ": " + SlotModel.state.balance.toFixed(2));
     this.ui.bet.setString(
       I18N.t("bet","Bet") + ": " + SlotModel.totalBet().toFixed(2) +
-      "  (Lvl " + ((SlotModel.state.betIndex||0)+1) + "/" + ((SlotModel.cfg.math.bet_levels||[1]).length) + ")" +
+      "  (Lvl " + ((SlotModel.state.betIndex||0)+1) + "/" + ((SlotModel.cfg.math.bet_levels||[1]).length) + " = x" + SlotModel.betLevel() + ")" +
       "  [" + reels + "x" + rows + "]"
     );
 
@@ -1324,7 +1326,7 @@ def _project_json(js_list: List[str]) -> dict:
         "tag": "gameCanvas",
         "renderMode": 0,
         "engineDir": "frameworks/cocos2d-html5/",
-        "modules": ["cocos2d"],
+        "modules": ["core", "actions", "audio"],
         "jsList": js_list,
     }
 

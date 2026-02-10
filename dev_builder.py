@@ -227,7 +227,10 @@ _ENGINE_AUDIO = """var Audio = {
   },
 
   play: function(k){
-    if (!this._unlocked) return;
+    if (!this._unlocked) {
+      try { this.unlock(); } catch (e0) {}
+      if (!this._unlocked) return;
+    }
     var f = this._lookup(k);
     var cands = this._resolveMany(f);
     if (!cands.length) return;
@@ -378,7 +381,14 @@ _ENGINE_SLOT_MODEL = r"""var SlotModel = {
     this.state.balance = baseBet * 1000;
     this.state.betIndex = 0;
     var levels = (this.cfg && this.cfg.math && this.cfg.math.bet_levels) ? this.cfg.math.bet_levels : [1];
-    if (!levels || !levels.length) this.cfg.math.bet_levels = [1];
+    if (!levels || !levels.length) levels = [1];
+    var norm = [];
+    for (var i=0;i<levels.length;i++) {
+      var v = Number(levels[i]);
+      if (!isNaN(v) && isFinite(v) && v > 0) norm.push(v);
+    }
+    if (!norm.length) norm = [1];
+    this.cfg.math.bet_levels = norm;
     this.state.freeSpins = 0;
     this.state.inFreeSpins = false;
   },
@@ -433,6 +443,17 @@ _ENGINE_SLOT_MODEL = r"""var SlotModel = {
 
     // Ensure paylines match current dims
     this._ensurePaylines();
+  },
+
+  setPaylineCount: function(count){
+    if (!this.cfg || !this.cfg.math) return;
+    count = Math.max(1, Math.min(200, count|0));
+    this.cfg.math.payline_count = count;
+    this.paylines = this._genPaylines(
+      this.cfg.math.reel_count || 5,
+      this.cfg.math.row_count || 3,
+      count
+    );
   },
 
   _ensurePaylines: function(){
@@ -653,26 +674,38 @@ var SlotScene = cc.Scene.extend({
         candidates.push(String(bgFile));
       }
 
+      var self = this;
+      var applyBg = function(bg){
+        if (!bg) return;
+        if (self._bgNode) self._bgNode.removeFromParent(true);
+        bg.setPosition(480, 270);
+        self.addChild(bg, 0);
+        self._fitSpriteTo(bg, 960, 540, true);
+        if (typeof self.scheduleOnce === "function") {
+          self.scheduleOnce(function(){ self._fitSpriteTo(bg, 960, 540, true); }, 0.05);
+        }
+        self._bgNode = bg;
+      };
+
       var bg = null;
       for (var i=0; i<candidates.length; i++){
         try {
           bg = new cc.Sprite(candidates[i]);
           var sz = bg.getContentSize && bg.getContentSize();
-          if (sz && sz.width > 0 && sz.height > 0) break;
+          if (sz && sz.width > 0 && sz.height > 0) { applyBg(bg); return; }
         } catch (e1) { bg = null; }
       }
-      if (!bg) return;
 
-      if (this._bgNode) this._bgNode.removeFromParent(true);
-      bg.setPosition(480, 270);
-      this.addChild(bg, 0);
-
-      this._fitSpriteTo(bg, 960, 540, true);
-      if (typeof this.scheduleOnce === "function") {
-        this.scheduleOnce(function(){ this._fitSpriteTo(bg, 960, 540, true); }.bind(this), 0.05);
+      for (var j=0; j<candidates.length; j++){
+        (function(path){
+          try {
+            cc.textureCache.addImage(path, function(tex){
+              if (!tex) return;
+              applyBg(new cc.Sprite(tex));
+            });
+          } catch (e2) {}
+        })(candidates[j]);
       }
-
-      this._bgNode = bg;
     } catch (e) {}
   },
 
@@ -838,7 +871,16 @@ var SlotScene = cc.Scene.extend({
 
     var linesBtn = this._makeButton(300, 60, "PAYLINES", function(){
       self._unlockAudioOnce();
-      self._showAllPaylines = !self._showAllPaylines;
+      if (self.busy) return;
+      var choices = [1, 5, 10, 15, 20, 25, 50, 100, 200];
+      var cur = (SlotModel.cfg && SlotModel.cfg.math && SlotModel.cfg.math.payline_count) ? SlotModel.cfg.math.payline_count : ((SlotModel.paylines || []).length || 25);
+      var next = choices[0];
+      for (var i=0;i<choices.length;i++) {
+        if (choices[i] > cur) { next = choices[i]; break; }
+      }
+      if (cur >= choices[choices.length - 1]) next = choices[0];
+      SlotModel.setPaylineCount(next);
+      self._showAllPaylines = false;
       self._refreshUI();
       try { if (!self._muted) Audio.play("click"); } catch(e){}
     }, 130, 44);

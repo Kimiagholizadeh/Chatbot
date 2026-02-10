@@ -33,6 +33,20 @@ AUDIO_KEYS = [
 ]
 
 
+class _MemoryUpload:
+    """Small adapter with UploadedFile-like API for build functions."""
+
+    def __init__(self, *, name: str, data: bytes) -> None:
+        self.name = name
+        self._data = data
+
+    def getvalue(self) -> bytes:
+        return self._data
+
+    def getbuffer(self):
+        return memoryview(self._data)
+
+
 def _resolve_core_root(override: str) -> Path:
     override = (override or "").strip()
     if override:
@@ -262,16 +276,26 @@ def _step_assets() -> None:
 
     bg = st.session_state.get("bg_upload")
     if bg is not None:
-        st.success(f"Background selected: {bg.name}")
-        st.image(bg, caption="Selected background preview", use_container_width=True)
+        st.session_state["bg_upload_name"] = str(getattr(bg, "name", "background.png"))
+        st.session_state["bg_upload_bytes"] = bytes(bg.getvalue())
+    bg_name = st.session_state.get("bg_upload_name")
+    bg_bytes = st.session_state.get("bg_upload_bytes")
+    if bg_name and bg_bytes:
+        st.success(f"Background selected: {bg_name}")
+        st.image(bg_bytes, caption=f"Selected background preview: {bg_name}", use_container_width=True)
 
     st.markdown("### Audio per event (optional)")
     for k, label in AUDIO_KEYS:
         st.file_uploader(label, type=["mp3","wav","ogg"], key=f"aud_{k}")
         aud = st.session_state.get(f"aud_{k}")
         if aud is not None:
-            st.caption(f"{label}: {aud.name}")
-            st.audio(aud)
+            st.session_state[f"aud_{k}_name"] = str(getattr(aud, "name", f"{k}.mp3"))
+            st.session_state[f"aud_{k}_bytes"] = bytes(aud.getvalue())
+        aud_name = st.session_state.get(f"aud_{k}_name")
+        aud_bytes = st.session_state.get(f"aud_{k}_bytes")
+        if aud_name and aud_bytes:
+            st.caption(f"{label}: {aud_name}")
+            st.audio(aud_bytes)
 
     st.markdown("### Extra UI images (optional)")
     st.file_uploader("UI images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, key="ui_uploads")
@@ -459,15 +483,25 @@ def _step_build() -> None:
     symbol_uploads_named = st.session_state.get("symbol_uploads_named", [])
     ui_uploads = st.session_state.get("ui_uploads") or []
     background_upload = st.session_state.get("bg_upload")
+    if background_upload is None and st.session_state.get("bg_upload_name") and st.session_state.get("bg_upload_bytes"):
+        background_upload = _MemoryUpload(
+            name=str(st.session_state["bg_upload_name"]),
+            data=bytes(st.session_state["bg_upload_bytes"]),
+        )
 
     # audio mapping (named)
     audio_named: List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]] = []
     for k, _label in AUDIO_KEYS:
         f = st.session_state.get(f"aud_{k}")
-        if f is None:
+        if f is not None:
+            ext = Path(f.name).suffix or ".mp3"
+            audio_named.append((f, f"{k}{ext}"))
             continue
-        ext = Path(f.name).suffix or ".mp3"
-        audio_named.append((f, f"{k}{ext}"))
+        b = st.session_state.get(f"aud_{k}_bytes")
+        n = st.session_state.get(f"aud_{k}_name")
+        if b and n:
+            ext = Path(str(n)).suffix or ".mp3"
+            audio_named.append((_MemoryUpload(name=str(n), data=bytes(b)), f"{k}{ext}"))
 
     math_pool_zip = st.session_state.get("math_pool_zip")
 

@@ -187,6 +187,21 @@ def _step_math_layout() -> None:
 
     st.text_input("Bet levels (comma-separated)", "1,2,5,10,20", key="bet_levels_txt")
 
+    try:
+        bet_levels = _parse_csv_floats(st.session_state.get("bet_levels_txt", ""))
+        denom = float(st.session_state.get("denomination", 0.01))
+        cpl = int(st.session_state.get("coins_per_line", 1))
+        paylines = int(st.session_state.get("payline_count", 25))
+        base_bet = denom * cpl * max(1, paylines)
+        st.caption(
+            f"Current math selection → Reels: {int(st.session_state.get('reel_count', 5))}, "
+            f"Rows: {int(st.session_state.get('row_count', 3))}, "
+            f"Paylines: {paylines}, Bet levels: {bet_levels}, "
+            f"Base total bet (x1): {base_bet:.4f}"
+        )
+    except Exception:
+        st.warning("Bet levels must be comma-separated numbers (example: 1,2,5,10).")
+
 
 def _step_symbols() -> None:
     st.number_input("How many symbols?", min_value=4, max_value=40, value=12, step=1, key="symbol_count")
@@ -245,9 +260,18 @@ def _step_assets() -> None:
     st.caption("Background + per-event audio. If you don't upload, defaults are silent/flat.")
     st.file_uploader("Background image (optional)", type=["png","jpg","jpeg","webp"], key="bg_upload")
 
+    bg = st.session_state.get("bg_upload")
+    if bg is not None:
+        st.success(f"Background selected: {bg.name}")
+        st.image(bg, caption="Selected background preview", use_container_width=True)
+
     st.markdown("### Audio per event (optional)")
     for k, label in AUDIO_KEYS:
         st.file_uploader(label, type=["mp3","wav","ogg"], key=f"aud_{k}")
+        aud = st.session_state.get(f"aud_{k}")
+        if aud is not None:
+            st.caption(f"{label}: {aud.name}")
+            st.audio(aud)
 
     st.markdown("### Extra UI images (optional)")
     st.file_uploader("UI images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, key="ui_uploads")
@@ -266,6 +290,7 @@ def _step_localization() -> None:
 
 def _step_math_pool() -> None:
     st.info("Optional: generate a math pool zip and embed it into the runnable build at res/conf/math_pool.zip.")
+    st.caption("Tip: math-pool settings are separate. Use the sync toggle below if you want these values to also update Build settings.")
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -283,6 +308,13 @@ def _step_math_pool() -> None:
     st.number_input("Denom", min_value=0.0001, value=float(st.session_state.get("denomination",0.01)), step=0.0001, format="%.4f", key="mp_denom")
     st.number_input("Coins per line", min_value=1, value=int(st.session_state.get("coins_per_line",1)), step=1, key="mp_coins_per_line")
     st.number_input("Payline count", min_value=1, value=int(st.session_state.get("payline_count",25)), step=1, key="mp_payline_count")
+    st.checkbox("Sync these Bet/Denom/Coins/Paylines values to Build settings", value=True, key="mp_sync_to_build")
+
+    if st.session_state.get("mp_sync_to_build", True):
+        st.session_state["bet_levels_txt"] = str(st.session_state.get("mp_bet_levels", st.session_state.get("bet_levels_txt", "1")))
+        st.session_state["denomination"] = float(st.session_state.get("mp_denom", st.session_state.get("denomination", 0.01)))
+        st.session_state["coins_per_line"] = int(st.session_state.get("mp_coins_per_line", st.session_state.get("coins_per_line", 1)))
+        st.session_state["payline_count"] = int(st.session_state.get("mp_payline_count", st.session_state.get("payline_count", 25)))
 
     st.markdown("### Targets")
     t1, t2, t3, t4 = st.columns(4)

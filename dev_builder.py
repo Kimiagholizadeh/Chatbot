@@ -567,6 +567,7 @@ var SlotScene = cc.Scene.extend({
 
     // draw
     this.lineDraw = null;
+    this._showAllPaylines = false;
 
     // ribbon reels
     this.reelStrips = []; // per reel: { node, sprites[], cellH, rows }
@@ -599,8 +600,8 @@ var SlotScene = cc.Scene.extend({
     this.addChild(this.uiLayer, 50);
 
     SlotModel.initFromFiles(function(){
-      // Default the demo to 5x4 if user config isn't already
-      try { SlotModel.setDimensions(5, 4); } catch (e) {}
+      // Respect wizard-configured dimensions from game_config.json
+      try { SlotModel.setDimensions(SlotModel.cfg.math.reel_count || 5, SlotModel.cfg.math.row_count || 4); } catch (e) {}
 
       self._loadBackground();
       self._buildUI();
@@ -716,6 +717,18 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(msg);
     this.ui.msg = msg;
 
+    var paylineInfo = new cc.LabelTTF("", "Arial", 14);
+    paylineInfo.setAnchorPoint(0, 1);
+    paylineInfo.setPosition(20, 455);
+    this.uiLayer.addChild(paylineInfo);
+    this.ui.paylineInfo = paylineInfo;
+
+    var winBreakdown = new cc.LabelTTF("", "Arial", 13);
+    winBreakdown.setAnchorPoint(1, 1);
+    winBreakdown.setPosition(940, 455);
+    this.uiLayer.addChild(winBreakdown);
+    this.ui.winBreakdown = winBreakdown;
+
     // --- SPIN ---
     var spinBtn = this._makeButton(480, 110, I18N.t("spin","SPIN"), function(){
       self._unlockAudioOnce();           // user gesture -> unlock audio
@@ -783,6 +796,14 @@ var SlotScene = cc.Scene.extend({
       try { if (!self._muted) Audio.play("click"); } catch(e){}
     }, 120, 44);
     this.uiLayer.addChild(rowsBtn);
+
+    var linesBtn = this._makeButton(300, 60, "PAYLINES", function(){
+      self._unlockAudioOnce();
+      self._showAllPaylines = !self._showAllPaylines;
+      self._refreshUI();
+      try { if (!self._muted) Audio.play("click"); } catch(e){}
+    }, 130, 44);
+    this.uiLayer.addChild(linesBtn);
 
     // --- Mute ---
     var muteBtn = this._makeButton(900, 520, "VOL", function(){
@@ -867,7 +888,7 @@ var SlotScene = cc.Scene.extend({
     var frameH = Math.floor(cellH * 0.86);
 
     var startX = 480 - ((reels - 1) * cellW) / 2;
-    var startY = 290;
+    var startY = 270 - ((rows - 1) * cellH) / 2;
 
     this._cellW = cellW;
     this._cellH = cellH;
@@ -1021,10 +1042,32 @@ var SlotScene = cc.Scene.extend({
     } else {
       this.ui.fs.setString("");
     }
+
+    var pls = SlotModel.paylines || [];
+    var title = "Paylines: " + pls.length;
+    if (this._showAllPaylines && pls.length) {
+      var lines = [];
+      for (var i=0; i<pls.length && i<12; i++) lines.push("L" + (i+1) + " " + pls[i].join("-"));
+      this.ui.paylineInfo.setString(title + "\n" + lines.join("\n"));
+    } else {
+      this.ui.paylineInfo.setString(title + "\n(Tap PAYLINES to expand)");
+    }
   },
 
   _setMessage: function(txt){
     if (this.ui && this.ui.msg) this.ui.msg.setString(txt || "");
+  },
+
+  _formatWinBreakdown: function(wins){
+    if (!wins || !wins.length) return I18N.t("no_line_wins", "No line wins");
+    var out = [];
+    for (var i=0; i<wins.length; i++){
+      var w = wins[i];
+      if (!w || w.type !== "line") continue;
+      out.push("L" + (w.lineIndex + 1) + ": " + w.amount.toFixed(2));
+      if (out.length >= 6) break;
+    }
+    return out.length ? out.join("\n") : I18N.t("no_line_wins", "No line wins");
   },
 
   _onSpin: function(){
@@ -1053,6 +1096,7 @@ var SlotScene = cc.Scene.extend({
       }
 
       self._drawWinLines(res.wins);
+      if (self.ui && self.ui.winBreakdown) self.ui.winBreakdown.setString(self._formatWinBreakdown(res.wins));
 
       var msgParts = [];
       if (res.totalWin > 0) msgParts.push(I18N.t("win","Win") + ": " + res.totalWin.toFixed(2));

@@ -89,7 +89,7 @@ def show_game_generator() -> None:
     # persistent shared keys with defaults
     st.session_state.setdefault("core_root_override", "")
     st.session_state.setdefault("igaming_root_override", "")
-    st.session_state.setdefault("display_name", "Animals in the Meadow")
+    st.session_state.setdefault("display_name", "My Slot Game")
     # internal name handling: use a separate widget key to avoid Streamlit "cannot modify after instantiation"
     st.session_state.setdefault("lock_internal_name", True)
     st.session_state.setdefault("internal_name_manual", False)
@@ -386,7 +386,7 @@ def _step_build() -> None:
     row_count = int(st.session_state.get("row_count",3))
     payline_count = int(st.session_state.get("payline_count",25))
 
-    bet_levels = _parse_csv_floats(st.session_state.get("bet_levels_txt","1,2,5,10"))
+    bet_levels = _parse_csv_floats(st.session_state.get("bet_levels_txt","1,2,5,10,20"))
 
     feature_cfg = FeatureConfig(
         free_spins_award=st.session_state.get("fs_award",{3:8,4:12,5:20}),

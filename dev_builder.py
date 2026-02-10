@@ -189,7 +189,6 @@ _ENGINE_AUDIO = """var Audio = {
   setMap: function(m){ this.map = m || {}; },
 
   unlock: function(){
-    // called on first user gesture
     if (this._unlocked) return;
     this._unlocked = true;
     try {
@@ -199,19 +198,46 @@ _ENGINE_AUDIO = """var Audio = {
     } catch (e) {}
   },
 
-  _resolve: function(f){
-    if (!f) return null;
-    if (/^(https?:)?\\/\\//.test(f)) return f;
-    if (f.indexOf("res/") === 0) return f;
-    return "res/assets/audio/" + f;
+  _resolveMany: function(f){
+    if (!f) return [];
+    if (/^(https?:)?\/\//.test(f)) return [f];
+    var out = [];
+    if (f.indexOf("res/") === 0) out.push(f);
+    else {
+      out.push("res/assets/audio/" + f);
+      out.push(f);
+    }
+    return out;
+  },
+
+  _lookup: function(k){
+    if (!this.map) return null;
+    var direct = this.map[k];
+    if (direct) return direct;
+
+    var alt = [
+      String(k || "").toLowerCase(),
+      String(k || "").replace(/_/g, "").toLowerCase(),
+      String(k || "").replace(/_/g, "-").toLowerCase()
+    ];
+    for (var i=0;i<alt.length;i++){
+      if (this.map[alt[i]]) return this.map[alt[i]];
+    }
+    return null;
   },
 
   play: function(k){
-    if (!this._unlocked) return; // prevents "it doesn't play" due to gesture restriction
-    var f = this.map ? this.map[k] : null;
-    f = this._resolve(f);
-    if (!f) return;
-    try { cc.audioEngine.playEffect(f, false); } catch (e) {}
+    if (!this._unlocked) return;
+    var f = this._lookup(k);
+    var cands = this._resolveMany(f);
+    if (!cands.length) return;
+
+    for (var i=0;i<cands.length;i++){
+      try {
+        var id = cc.audioEngine.playEffect(cands[i], false);
+        if (id !== undefined && id !== null && id !== -1) return;
+      } catch (e) {}
+    }
   }
 };"""
 
@@ -620,12 +646,24 @@ var SlotScene = cc.Scene.extend({
       var bgFile = SlotModel.assets && (SlotModel.assets.background || SlotModel.assets.bg);
       if (!bgFile) return;
 
-      var path = "res/assets/backgrounds/" + bgFile;
+      var candidates = [];
+      if (String(bgFile).indexOf("res/") === 0) candidates.push(String(bgFile));
+      else {
+        candidates.push("res/assets/backgrounds/" + bgFile);
+        candidates.push(String(bgFile));
+      }
 
-      // Background file is preloaded via g_resources, so create directly.
+      var bg = null;
+      for (var i=0; i<candidates.length; i++){
+        try {
+          bg = new cc.Sprite(candidates[i]);
+          var sz = bg.getContentSize && bg.getContentSize();
+          if (sz && sz.width > 0 && sz.height > 0) break;
+        } catch (e1) { bg = null; }
+      }
+      if (!bg) return;
+
       if (this._bgNode) this._bgNode.removeFromParent(true);
-
-      var bg = new cc.Sprite(path);
       bg.setPosition(480, 270);
       this.addChild(bg, 0);
 
@@ -1431,6 +1469,7 @@ def build_dev_web_zip(
         assets_manifest = _build_asset_manifest(sym_files, ui_files, aud_files)
         if bg_file:
             assets_manifest["background"] = bg_file
+            assets_manifest["bg"] = bg_file
         write_json(web / "res" / "assets_manifest.json", assets_manifest)
 
         # Config

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import streamlit as st
+from PIL import Image
 
 from .spec import GameSpec
 from .util_fs import (
@@ -2011,12 +2012,21 @@ def build_dev_web_zip(
                 if found:
                     src, source_kind = found
                     ext = src.suffix.lower()
-                    if source_kind == "buttons":
-                        dst_rel = f"dashboard/buttons/{stem}{ext}"
-                    else:
-                        dst_rel = f"dashboard/{stem}{ext}"
+                    dst_rel = f"dashboard/buttons/{stem}.png" if source_kind == "buttons" else f"dashboard/{stem}.png"
                     dst = web / "res" / "assets" / "ui" / dst_rel
-                    copy_file(src, dst)
+
+                    if ext == ".png":
+                        copy_file(src, dst)
+                    else:
+                        try:
+                            with Image.open(src) as im:
+                                im.save(dst, format="PNG")
+                        except Exception:
+                            # Fallback: keep original bytes/name if conversion fails.
+                            dst_rel = f"dashboard/buttons/{stem}{ext}" if source_kind == "buttons" else f"dashboard/{stem}{ext}"
+                            dst = web / "res" / "assets" / "ui" / dst_rel
+                            copy_file(src, dst)
+
                     if dst_rel not in existing:
                         ui_files.append(dst_rel)
                         existing.add(dst_rel)

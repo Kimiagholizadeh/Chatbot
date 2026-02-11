@@ -1960,6 +1960,9 @@ def build_dev_web_zip(
         ui_files = copy_uploaded_files(ui_uploads or [], web / "res" / "assets" / "ui")
 
         # Optional: auto-import shared dashboard UI files from local PGS-Igaming root.
+        # Keep dashboard structure in output:
+        #   res/assets/ui/dashboard/*.png
+        #   res/assets/ui/dashboard/buttons/*.png
         copied_dashboard_count = 0
         if dashboard_assets_root:
             dash_root = Path(dashboard_assets_root)
@@ -1986,8 +1989,10 @@ def build_dev_web_zip(
             ]
             allowed_ext = {".png", ".webp", ".jpg", ".jpeg"}
 
-            candidates: Dict[str, Path] = {}
-            for src_dir in [buttons_dir, dash_root]:
+            # Build a case-insensitive candidate map and preserve which source folder supplied the file.
+            # Prefer buttons/ over dashboard root when stems overlap.
+            candidates: Dict[str, Tuple[Path, str]] = {}
+            for src_dir, source_kind in [(buttons_dir, "buttons"), (dash_root, "dashboard")]:
                 if not src_dir.exists() or not src_dir.is_dir():
                     continue
                 for f in src_dir.iterdir():
@@ -1996,20 +2001,25 @@ def build_dev_web_zip(
                     ext = f.suffix.lower()
                     if ext not in allowed_ext:
                         continue
-                    candidates.setdefault(f.stem.lower(), f)
+                    candidates.setdefault(f.stem.lower(), (f, source_kind))
 
-            ensure_dir(web / "res" / "assets" / "ui")
+            ensure_dir(web / "res" / "assets" / "ui" / "dashboard")
+            ensure_dir(web / "res" / "assets" / "ui" / "dashboard" / "buttons")
             existing = set(ui_files)
             for stem in wanted_stems:
-                src = candidates.get(stem)
-                if src:
-                    # Keep source extension (lowercased) so file bytes and extension stay consistent.
-                    dst_name = f"{stem}{src.suffix.lower()}"
-                    dst = web / "res" / "assets" / "ui" / dst_name
+                found = candidates.get(stem)
+                if found:
+                    src, source_kind = found
+                    ext = src.suffix.lower()
+                    if source_kind == "buttons":
+                        dst_rel = f"dashboard/buttons/{stem}{ext}"
+                    else:
+                        dst_rel = f"dashboard/{stem}{ext}"
+                    dst = web / "res" / "assets" / "ui" / dst_rel
                     copy_file(src, dst)
-                    if dst_name not in existing:
-                        ui_files.append(dst_name)
-                        existing.add(dst_name)
+                    if dst_rel not in existing:
+                        ui_files.append(dst_rel)
+                        existing.add(dst_rel)
                     copied_dashboard_count += 1
 
             if dashboard_assets_required and copied_dashboard_count == 0:

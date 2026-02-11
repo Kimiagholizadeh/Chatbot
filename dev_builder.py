@@ -186,6 +186,7 @@ _ENGINE_AUDIO = """var Audio = {
   map: {},
   _unlocked: false,
   _activeWinId: null,
+  _freeSpinLoopId: null,
 
   setMap: function(m){ this.map = m || {}; },
 
@@ -231,6 +232,32 @@ _ENGINE_AUDIO = """var Audio = {
     if (this._activeWinId === null || this._activeWinId === undefined) return;
     try { cc.audioEngine.stopEffect(this._activeWinId); } catch (e) {}
     this._activeWinId = null;
+  },
+
+  startFreeSpinLoop: function(){
+    if (!this._unlocked) {
+      try { this.unlock(); } catch (e0) {}
+      if (!this._unlocked) return;
+    }
+    if (this._freeSpinLoopId !== null && this._freeSpinLoopId !== undefined) return;
+    var f = this._lookup("freespin");
+    var cands = this._resolveMany(f);
+    if (!cands.length) return;
+    for (var i=0;i<cands.length;i++){
+      try {
+        var id = cc.audioEngine.playEffect(cands[i], true);
+        if (id !== undefined && id !== null && id !== -1) {
+          this._freeSpinLoopId = id;
+          return;
+        }
+      } catch (e) {}
+    }
+  },
+
+  stopFreeSpinLoop: function(){
+    if (this._freeSpinLoopId === null || this._freeSpinLoopId === undefined) return;
+    try { cc.audioEngine.stopEffect(this._freeSpinLoopId); } catch (e) {}
+    this._freeSpinLoopId = null;
   },
 
   play: function(k){
@@ -651,11 +678,9 @@ var SlotScene = cc.Scene.extend({
     this._bgNode = new cc.LayerColor(cc.color(11,16,32,255), 960, 540);
     this.addChild(this._bgNode, 0);
 
-    var gameTitle = (SlotModel.cfg && SlotModel.cfg.identity && SlotModel.cfg.identity.display_name)
-      ? SlotModel.cfg.identity.display_name
-      : "Slot Maker Engine";
-    var title = new cc.LabelTTF(gameTitle, "Arial", 22);
+    var title = new cc.LabelTTF("Slot Maker Engine", "Arial", 22);
     title.setPosition(480, 520);
+    this._title = title;
     this.addChild(title, 1);
 
     this.gridLayer = new cc.Node();
@@ -665,6 +690,12 @@ var SlotScene = cc.Scene.extend({
     this.addChild(this.uiLayer, 50);
 
     SlotModel.initFromFiles(function(){
+      try {
+        if (self._title && SlotModel.cfg && SlotModel.cfg.identity && SlotModel.cfg.identity.display_name) {
+          self._title.setString(String(SlotModel.cfg.identity.display_name));
+        }
+      } catch (eTitle) {}
+
       // Respect wizard-configured dimensions from game_config.json
       try { SlotModel.setDimensions(SlotModel.cfg.math.reel_count || 5, SlotModel.cfg.math.row_count || 4); } catch (e) {}
 
@@ -1190,6 +1221,9 @@ var SlotScene = cc.Scene.extend({
     this.lineDraw.clear();
     this._setMessage("");
 
+    var beforeFS = (SlotModel.state && SlotModel.state.inFreeSpins) ? (SlotModel.state.freeSpins || 0) : 0;
+    var wasInFS = !!(SlotModel.state && SlotModel.state.inFreeSpins && SlotModel.state.freeSpins > 0);
+
     // Stop previous long win cue as soon as player starts the next spin.
     try { Audio.stopWin(); } catch (e1) {}
 
@@ -1209,9 +1243,16 @@ var SlotScene = cc.Scene.extend({
 
       var fsStarted = (!res.inFreeSpins && res.freeSpinsRemaining > 0);
       var fsEnded = (res.inFreeSpins && res.freeSpinsRemaining <= 0);
+      var expectedNoAward = wasInFS ? Math.max(0, beforeFS - 1) : 0;
+      var fsAwarded = Math.max(0, (res.freeSpinsRemaining || 0) - expectedNoAward);
 
       if (!self._muted && fsStarted) {
         try { Audio.play("freespin"); } catch(e0){}
+      }
+
+      // Keep free-spin audio continuous through all FS rounds.
+      if (res.freeSpinsRemaining > 0) {
+        try { Audio.startFreeSpinLoop(); } catch(eFS1){}
       }
 
       if (!self._muted && ((res.wins && res.wins.length) || (res.scatter && res.scatter.amount > 0))) {
@@ -1221,6 +1262,9 @@ var SlotScene = cc.Scene.extend({
       if (!self._muted && fsEnded) {
         // Reuse freespin event as "feature finished" cue when dedicated end audio is not provided.
         try { Audio.play("freespin"); } catch(e3){}
+      }
+      if (fsEnded || res.freeSpinsRemaining <= 0) {
+        try { Audio.stopFreeSpinLoop(); } catch(eFS2){}
       }
 
       self._drawWinLines(res.wins);
@@ -1252,7 +1296,7 @@ var SlotScene = cc.Scene.extend({
           else setTimeout(autoNext, Math.floor(delaySec * 1000));
         };
 
-        if (fsStarted) self._showFreeSpinIntro(function(){ queueAutoSpin(0.20); });
+        if (fsAwarded > 0) self._showFreeSpinIntro(function(){ queueAutoSpin(0.20); });
         else queueAutoSpin(0.35);
       }
     });

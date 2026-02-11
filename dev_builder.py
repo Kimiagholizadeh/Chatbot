@@ -2003,8 +2003,8 @@ def build_dev_web_zip(
             for stem in wanted_stems:
                 src = candidates.get(stem)
                 if src:
-                    # Normalize output names to lowercase .png so runtime stem lookup is stable.
-                    dst_name = f"{stem}.png"
+                    # Keep source extension (lowercased) so file bytes and extension stay consistent.
+                    dst_name = f"{stem}{src.suffix.lower()}"
                     dst = web / "res" / "assets" / "ui" / dst_name
                     copy_file(src, dst)
                     if dst_name not in existing:

@@ -837,6 +837,7 @@ var SlotScene = cc.Scene.extend({
         node._bg.setScaleX((w || s.width) / s.width);
         node._bg.setScaleY((h || s.height) / s.height);
       }
+      if (node._fallbackBg) node._fallbackBg.setVisible(false);
       return true;
     } catch (e) {}
     return false;
@@ -1250,10 +1251,17 @@ var SlotScene = cc.Scene.extend({
     node.setPosition(x,y);
     node.setContentSize(w,h);
 
-    var bg = new cc.LayerColor(cc.color(30,44,80,220), w, h);
-    if (bg.setIgnoreAnchorPointForPosition) bg.setIgnoreAnchorPointForPosition(false);
-    bg.setPosition(-w/2, -h/2);
-    node.addChild(bg);
+    // Fallback color background (used only when no texture is available).
+    var fallbackBg = new cc.LayerColor(cc.color(30,44,80,220), w, h);
+    if (fallbackBg.setIgnoreAnchorPointForPosition) fallbackBg.setIgnoreAnchorPointForPosition(false);
+    fallbackBg.setPosition(-w/2, -h/2);
+    node.addChild(fallbackBg);
+    node._fallbackBg = fallbackBg;
+
+    // Real texture target for stateful button images.
+    var bg = new cc.Sprite();
+    bg.setPosition(0, 0);
+    node.addChild(bg, 1);
     node._bg = bg;
 
     var txt = new cc.LabelTTF(label, "Arial", Math.max(14, Math.floor(h*0.45)));

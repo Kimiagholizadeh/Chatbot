@@ -44,8 +44,10 @@ def get_core_root() -> Path:
 
 def core_health_report(core_root: Path) -> Tuple[bool, str]:
     needed = [
-        core_root / "frameworks" / "cocos2d-html5" / "CCBoot.js",
         core_root / "frameworks" / "cocos2d-html5",
+        core_root / "frameworks" / "cocos2d-html5" / "CCBoot.js",
+        core_root / "frameworks" / "cocos2d-html5" / "cocos2d" / "core" / "platform" / "CCClass.js",
+        core_root / "frameworks" / "cocos2d-html5" / "cocos2d" / "core" / "renderer" / "RendererWebGL.js",
     ]
     missing = [p for p in needed if not p.exists()]
     if missing:
@@ -54,5 +56,6 @@ def core_health_report(core_root: Path) -> Tuple[bool, str]:
         msg += "1) Paste the correct core path in the UI field (PongGameCore root).\n"
         msg += "2) Or set env var PONGGAMECORE_ROOT.\n"
         msg += "3) Or move this project under your PGS_Assistant workspace so it can find `.core_cache`."
+        msg += "\n4) Ensure your core copy is complete (RendererWebGL.js and related cocos2d/core files must exist)."
         return False, msg
     return True, f"Core OK: {core_root}"

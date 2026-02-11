@@ -7,7 +7,7 @@ import random
 import time
 import uuid
 import zipfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any, Dict, Iterable, List, Literal, Optional
 
 SelectionMethod = Literal["sequential", "random_uniform", "random_weighted", "rng_stream"]
@@ -129,6 +129,108 @@ def _generate_outcome(rng: random.Random, cfg: PoolConfig, adjusted_base_weights
     return base_mult, hit, bonus_mult, bonus_trigger, prog_mult, prog_trigger
 
 
+def _expected_return_multiplier(cfg: PoolConfig, adjusted_base_weights: List[float]) -> float:
+    base_total_w = sum(adjusted_base_weights)
+    if base_total_w <= 0:
+        return 0.0
+
+    exp_base = 0.0
+    for m, w in zip(cfg.base_win_multipliers, adjusted_base_weights):
+        exp_base += float(m) * (float(w) / base_total_w)
+
+    bonus_total_w = sum(cfg.bonus_win_weights)
+    exp_bonus_pick = 0.0
+    if bonus_total_w > 0:
+        for m, w in zip(cfg.bonus_win_multipliers, cfg.bonus_win_weights):
+            exp_bonus_pick += float(m) * (float(w) / bonus_total_w)
+
+    exp_bonus = (cfg.bonus_trigger_percent / 100.0) * exp_bonus_pick
+    exp_prog = (cfg.progressive_trigger_percent / 100.0) * float(cfg.progressive_win_multiplier)
+    return exp_base + exp_bonus + exp_prog
+
+
+def _estimate_rtp_for_scale(cfg: PoolConfig, adjusted_base_weights: List[float], scale: float, samples: int = 12000) -> float:
+    rng = random.Random(91357)
+
+    base_scaled = [0.0 if float(m) == 0.0 else float(m) * scale for m in cfg.base_win_multipliers]
+    bonus_scaled = [float(m) * scale for m in cfg.bonus_win_multipliers]
+    prog_scaled = float(cfg.progressive_win_multiplier) * scale
+
+    cfg_s = replace(
+        cfg,
+        base_win_multipliers=base_scaled,
+        bonus_win_multipliers=bonus_scaled,
+        progressive_win_multiplier=prog_scaled,
+    )
+
+    total_bet = 0.0
+    total_win = 0.0
+    for _ in range(samples):
+        bet = float(rng.choice(cfg_s.bet_levels))
+        base_mult, _hit, bonus_mult, _btr, prog_mult, _ptr = _generate_outcome(rng, cfg_s, adjusted_base_weights)
+        raw = bet * (base_mult + bonus_mult + prog_mult)
+        capped = min(raw, bet * float(cfg_s.max_win_multiplier_cap))
+        total_bet += bet
+        total_win += round(float(capped), 2)
+
+    return (total_win / total_bet) if total_bet > 0 else 0.0
+
+
+def _apply_rtp_target(cfg: PoolConfig, adjusted_base_weights: List[float]) -> PoolConfig:
+    target = float(cfg.rtp_target_percent) / 100.0
+    if target <= 0:
+        return cfg
+
+    # First-pass analytic scale.
+    expected = _expected_return_multiplier(cfg, adjusted_base_weights)
+    if expected <= 0:
+        return cfg
+    seed_scale = max(0.01, min(100.0, target / expected))
+
+    # Refine with bounded binary-search calibration under cap + cent rounding.
+    lo = max(0.001, seed_scale * 0.2)
+    hi = min(500.0, seed_scale * 5.0)
+    # ensure bounds bracket target reasonably
+    r_lo = _estimate_rtp_for_scale(cfg, adjusted_base_weights, lo)
+    r_hi = _estimate_rtp_for_scale(cfg, adjusted_base_weights, hi)
+    for _ in range(6):
+        if r_lo > target:
+            hi = lo
+            lo = max(0.0001, lo * 0.5)
+            r_lo = _estimate_rtp_for_scale(cfg, adjusted_base_weights, lo)
+            continue
+        if r_hi < target:
+            lo = hi
+            hi = min(1000.0, hi * 1.8)
+            r_hi = _estimate_rtp_for_scale(cfg, adjusted_base_weights, hi)
+            continue
+        break
+
+    scale = seed_scale
+    if r_lo <= target <= r_hi:
+        for _ in range(14):
+            mid = (lo + hi) / 2.0
+            r_mid = _estimate_rtp_for_scale(cfg, adjusted_base_weights, mid)
+            scale = mid
+            if r_mid < target:
+                lo = mid
+            else:
+                hi = mid
+
+    scale = max(0.001, min(1000.0, scale))
+
+    scaled_base = [0.0 if float(m) == 0.0 else float(m) * scale for m in cfg.base_win_multipliers]
+    scaled_bonus = [float(m) * scale for m in cfg.bonus_win_multipliers]
+    scaled_prog = float(cfg.progressive_win_multiplier) * scale
+
+    return replace(
+        cfg,
+        base_win_multipliers=scaled_base,
+        bonus_win_multipliers=scaled_bonus,
+        progressive_win_multiplier=scaled_prog,
+    )
+
+
 def _build_ticket(ticket_id: int, rng: random.Random, cfg: PoolConfig, adjusted_base_weights: List[float], pool_seed_u64: int) -> TicketRow:
     bet_level = rng.choice(cfg.bet_levels)
     entry_level = rng.choice(cfg.entry_levels)
@@ -143,27 +245,31 @@ def _build_ticket(ticket_id: int, rng: random.Random, cfg: PoolConfig, adjusted_
     cap_value = bet_amount * float(cfg.max_win_multiplier_cap)
     total_win = min(pre_cap_total, cap_value)
 
-    wls: List[List[int]] = []
+    wls: List[List[float]] = []
     if total_win > 0 and cfg.payline_count > 0:
         base_line_total = min(base_win, total_win)
-        remaining = int(round(base_line_total))
+        # keep cents precision; integer rounding here destroys RTP accuracy for small bets
+        remaining = round(float(base_line_total), 2)
         line_hits = min(cfg.payline_count, max(1, int(rng.random() * 4) + 1))
         for _ in range(line_hits):
-            if remaining <= 0:
+            if remaining <= 0.0001:
                 break
-            piece = remaining if line_hits == 1 else rng.randint(1, remaining)
-            remaining -= piece
+            if line_hits == 1:
+                piece = remaining
+            else:
+                piece = round(rng.uniform(0.01, remaining), 2)
+            remaining = round(max(0.0, remaining - piece), 2)
             line_id = rng.randrange(cfg.payline_count)
             sym_count = rng.choice([3, 4, 5])
             sym_id = rng.choice([1, 2, 3, 4, 5, 6, 7, 8, 9])
-            wls.append([line_id, sym_count, sym_id, int(piece)])
+            wls.append([line_id, sym_count, sym_id, float(piece)])
 
     reel_count = 5
     row_count = 3
     window = [rng.randint(1, 12) for _ in range(reel_count * row_count)]
-    ticket_win_int = float(int(round(total_win)))
+    ticket_win = round(float(total_win), 2)
 
-    main_game = {"reels": [window], "wls": [wls], "win": ticket_win_int}
+    main_game = {"reels": [window], "wls": [wls], "win": ticket_win}
 
     return TicketRow(
         ticket_id=ticket_id,
@@ -181,12 +287,38 @@ def _build_ticket(ticket_id: int, rng: random.Random, cfg: PoolConfig, adjusted_
         base_win=float(base_win),
         bonus_win=float(bonus_win),
         progressive_win=float(progressive_win),
-        ticketWin=ticket_win_int,
-        totalWin=ticket_win_int,
+        ticketWin=ticket_win,
+        totalWin=ticket_win,
         hit=hit,
         bonus_trigger=bonus_trigger,
         progressive_trigger=prog_trigger,
         metrics={"poolSeed": str(pool_seed_u64), "notes": "distribution-template"},
+    )
+
+
+def _retune_ticket_to_factor(t: TicketRow, cfg: PoolConfig, factor: float) -> TicketRow:
+    factor = max(0.0, float(factor))
+    bet = float(t.bet_amount)
+    cap_value = bet * float(cfg.max_win_multiplier_cap)
+
+    base_win = round(float(t.base_win) * factor, 2)
+    bonus_win = round(float(t.bonus_win) * factor, 2)
+    progressive_win = round(float(t.progressive_win) * factor, 2)
+
+    pre_cap = base_win + bonus_win + progressive_win
+    total = round(min(pre_cap, cap_value), 2)
+
+    mg = dict(t.mainGame or {})
+    mg["win"] = total
+
+    return replace(
+        t,
+        base_win=base_win,
+        bonus_win=bonus_win,
+        progressive_win=progressive_win,
+        ticketWin=total,
+        totalWin=total,
+        mainGame=mg,
     )
 
 
@@ -228,17 +360,29 @@ def export_math_pool_zip(*, cfg: PoolConfig, ticket_count: int, seed_u64: Option
 
     adjusted_base_weights = apply_hit_rate(cfg.base_win_multipliers, cfg.base_win_weights, cfg.hit_rate_target_percent)
 
+    cfg_eff = _apply_rtp_target(cfg, adjusted_base_weights)
+
     pool_seed_u64 = int(seed_u64) if seed_u64 is not None else random.getrandbits(64)
     rng = random.Random(pool_seed_u64)
 
     tickets: List[TicketRow] = []
     for i in range(1, ticket_count + 1):
-        tickets.append(_build_ticket(i, rng, cfg, adjusted_base_weights, pool_seed_u64))
+        tickets.append(_build_ticket(i, rng, cfg_eff, adjusted_base_weights, pool_seed_u64))
         if progress_callback and (i % 10_000 == 0 or i == ticket_count):
             progress_callback(i, ticket_count)
 
     total_bet = sum(t.bet_amount for t in tickets)
     total_win = sum(t.totalWin for t in tickets)
+
+    # Final RTP calibration pass to keep observed output close to target.
+    target_rtp = float(cfg.rtp_target_percent) / 100.0
+    current_rtp = (total_win / total_bet) if total_bet else 0.0
+    if total_bet > 0 and target_rtp > 0 and current_rtp > 0:
+        correction = target_rtp / current_rtp
+        if abs(correction - 1.0) > 0.01:
+            tickets = [_retune_ticket_to_factor(t, cfg_eff, correction) for t in tickets]
+            total_win = sum(t.totalWin for t in tickets)
+
     hit_rate = (sum(1 for t in tickets if t.hit) / ticket_count) if ticket_count else 0.0
     bonus_rate = (sum(1 for t in tickets if t.bonus_trigger) / ticket_count) if ticket_count else 0.0
     prog_rate = (sum(1 for t in tickets if t.progressive_trigger) / ticket_count) if ticket_count else 0.0
@@ -274,6 +418,11 @@ def export_math_pool_zip(*, cfg: PoolConfig, ticket_count: int, seed_u64: Option
             "hit_rate_any_win_percent": hit_rate * 100,
             "bonus_trigger_rate_percent": bonus_rate * 100,
             "progressive_trigger_rate_percent": prog_rate * 100,
+        },
+        "effective_math": {
+            "base_win_multipliers": cfg_eff.base_win_multipliers,
+            "bonus_win_multipliers": cfg_eff.bonus_win_multipliers,
+            "progressive_win_multiplier": cfg_eff.progressive_win_multiplier,
         },
     }
 

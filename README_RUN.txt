@@ -29,3 +29,26 @@ Notes
      - Template project (ZIP upload recommended)
   4) After download, unzip and serve the build output via a web server:
        python -m http.server 8080
+
+- To build a **single PGS-Igaming game package** (for example game 9452):
+  1) Set "PGS-Igaming root" in Step 1 of the wizard.
+  2) Open step "PGS Package (9452)".
+  3) Use **Generate PGS Base Package ZIP** to export only required base folders.
+  4) Use **Generate PGS Configurable Package ZIP** to export base folders plus user-selected symbols/audio/background and generated math payload.
+  5) Configurable payload is written in canonical game locations under `assets/gameAssets/games/<id>/configs`, `sprites/generated_symbols`, and `sounds/generated_events`.
+  6) The wizard warns if expected `.meta` pairs are missing in the copied base source.
+
+
+- Reference: see `LOCATE_COMMON_ELEMENTS.md` for exact commands and path map to find shared buttons/fonts/help/win UI and core script locations.
+
+- To use an LLM to review this code quickly:
+  1) Open step "LLM Code Review" in the wizard.
+  2) Click "Generate LLM Review Bundle ZIP".
+  3) Upload the ZIP to your LLM and start with `LLM_REVIEW_PROMPT.md`.
+
+
+- Reference: see `UI_CONTROL_IMPLEMENTATION_MAP.md` for spin/stop, bet popup, max bet, auto count, quick/turbo button actions and locations in code.
+
+- If `PGS-Igaming root` is set, Dev Web build auto-imports dashboard button PNGs from `assets/resources/common/assets/default_ui/dashboard` and `.../dashboard/buttons` into runtime UI assets.
+
+- If `PGS-Igaming root` field is blank, the app also tries to infer `.../Workspace/PGS-Igaming` from `PONGGAMECORE_ROOT`.

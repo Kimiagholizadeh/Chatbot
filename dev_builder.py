@@ -21,6 +21,7 @@ import streamlit as st
 from .spec import GameSpec
 from .util_fs import (
     copy_tree,
+    copy_file,
     copy_uploaded_files,
     copy_uploaded_files_named,
     ensure_dir,
@@ -38,7 +39,7 @@ _INDEX_HTML = r"""<!doctype html>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-  <title>Slot Maker Demo</title>
+  <title>__GAME_TITLE__</title>
   <style>
     html, body { margin:0; padding:0; width:100%; height:100%; background:#0b1020; overflow:hidden; }
     #gameCanvas { width:100vw; height:100vh; display:block; margin:0 auto; background:#0b1020; }
@@ -66,7 +67,7 @@ _INDEX_HTML = r"""<!doctype html>
       width: 960,
       height: 540,
       engineDir: "frameworks/cocos2d-html5",
-      modules: ["core"],
+      modules: ["core", "actions", "audio"],
       jsList: __JS_LIST__
     };
 
@@ -185,11 +186,12 @@ _ENGINE_RNG = """var RNG = {
 _ENGINE_AUDIO = """var Audio = {
   map: {},
   _unlocked: false,
+  _activeWinId: null,
+  _freeSpinLoopId: null,
 
   setMap: function(m){ this.map = m || {}; },
 
   unlock: function(){
-    // called on first user gesture
     if (this._unlocked) return;
     this._unlocked = true;
     try {
@@ -199,19 +201,87 @@ _ENGINE_AUDIO = """var Audio = {
     } catch (e) {}
   },
 
-  _resolve: function(f){
-    if (!f) return null;
-    if (/^(https?:)?\\/\\//.test(f)) return f;
-    if (f.indexOf("res/") === 0) return f;
-    return "res/assets/audio/" + f;
+  _resolveMany: function(f){
+    if (!f) return [];
+    if (/^(https?:)?\/\//.test(f)) return [f];
+    var out = [];
+    if (f.indexOf("res/") === 0) out.push(f);
+    else {
+      out.push("res/assets/audio/" + f);
+      out.push(f);
+    }
+    return out;
+  },
+
+  _lookup: function(k){
+    if (!this.map) return null;
+    var direct = this.map[k];
+    if (direct) return direct;
+
+    var alt = [
+      String(k || "").toLowerCase(),
+      String(k || "").replace(/_/g, "").toLowerCase(),
+      String(k || "").replace(/_/g, "-").toLowerCase()
+    ];
+    for (var i=0;i<alt.length;i++){
+      if (this.map[alt[i]]) return this.map[alt[i]];
+    }
+    return null;
+  },
+
+  stopWin: function(){
+    if (this._activeWinId === null || this._activeWinId === undefined) return;
+    try { cc.audioEngine.stopEffect(this._activeWinId); } catch (e) {}
+    this._activeWinId = null;
+  },
+
+  startFreeSpinLoop: function(){
+    if (!this._unlocked) {
+      try { this.unlock(); } catch (e0) {}
+      if (!this._unlocked) return;
+    }
+    if (this._freeSpinLoopId !== null && this._freeSpinLoopId !== undefined) return;
+    var f = this._lookup("freespin");
+    var cands = this._resolveMany(f);
+    if (!cands.length) return;
+    for (var i=0;i<cands.length;i++){
+      try {
+        var id = cc.audioEngine.playEffect(cands[i], true);
+        if (id !== undefined && id !== null && id !== -1) {
+          this._freeSpinLoopId = id;
+          return;
+        }
+      } catch (e) {}
+    }
+  },
+
+  stopFreeSpinLoop: function(){
+    if (this._freeSpinLoopId === null || this._freeSpinLoopId === undefined) return;
+    try { cc.audioEngine.stopEffect(this._freeSpinLoopId); } catch (e) {}
+    this._freeSpinLoopId = null;
   },
 
   play: function(k){
-    if (!this._unlocked) return; // prevents "it doesn't play" due to gesture restriction
-    var f = this.map ? this.map[k] : null;
-    f = this._resolve(f);
-    if (!f) return;
-    try { cc.audioEngine.playEffect(f, false); } catch (e) {}
+    if (!this._unlocked) {
+      try { this.unlock(); } catch (e0) {}
+      if (!this._unlocked) return;
+    }
+    var f = this._lookup(k);
+    var cands = this._resolveMany(f);
+    if (!cands.length) return;
+
+    var kk = String(k || "").toLowerCase();
+    var isWinCue = (kk === "win" || kk === "bigwin");
+
+    for (var i=0;i<cands.length;i++){
+      try {
+        var id = cc.audioEngine.playEffect(cands[i], false);
+        if (id !== undefined && id !== null && id !== -1) {
+          if (isWinCue) this._activeWinId = id;
+          return;
+        }
+      } catch (e) {}
+    }
   }
 };"""
 
@@ -351,6 +421,15 @@ _ENGINE_SLOT_MODEL = r"""var SlotModel = {
     var baseBet = this.baseBet();
     this.state.balance = baseBet * 1000;
     this.state.betIndex = 0;
+    var levels = (this.cfg && this.cfg.math && this.cfg.math.bet_levels) ? this.cfg.math.bet_levels : [1];
+    if (!levels || !levels.length) levels = [1];
+    var norm = [];
+    for (var i=0;i<levels.length;i++) {
+      var v = Number(levels[i]);
+      if (!isNaN(v) && isFinite(v) && v > 0) norm.push(v);
+    }
+    if (!norm.length) norm = [1];
+    this.cfg.math.bet_levels = norm;
     this.state.freeSpins = 0;
     this.state.inFreeSpins = false;
   },
@@ -405,6 +484,17 @@ _ENGINE_SLOT_MODEL = r"""var SlotModel = {
 
     // Ensure paylines match current dims
     this._ensurePaylines();
+  },
+
+  setPaylineCount: function(count){
+    if (!this.cfg || !this.cfg.math) return;
+    count = Math.max(1, Math.min(200, count|0));
+    this.cfg.math.payline_count = count;
+    this.paylines = this._genPaylines(
+      this.cfg.math.reel_count || 5,
+      this.cfg.math.row_count || 3,
+      count
+    );
   },
 
   _ensurePaylines: function(){
@@ -567,6 +657,7 @@ var SlotScene = cc.Scene.extend({
 
     // draw
     this.lineDraw = null;
+    this._showAllPaylines = false;
 
     // ribbon reels
     this.reelStrips = []; // per reel: { node, sprites[], cellH, rows }
@@ -576,6 +667,13 @@ var SlotScene = cc.Scene.extend({
 
     // background
     this._bgNode = null;
+
+    // dashboard-like controls
+    this._forceStopRequested = false;
+    this._autoPanelOpen = false;
+    this._betPanelOpen = false;
+    this._autoRemaining = 0;
+    this._spinMode = "normal"; // normal|quick|turbo
 
     return true;
   },
@@ -590,6 +688,7 @@ var SlotScene = cc.Scene.extend({
 
     var title = new cc.LabelTTF("Slot Maker Engine", "Arial", 22);
     title.setPosition(480, 520);
+    this._title = title;
     this.addChild(title, 1);
 
     this.gridLayer = new cc.Node();
@@ -599,8 +698,14 @@ var SlotScene = cc.Scene.extend({
     this.addChild(this.uiLayer, 50);
 
     SlotModel.initFromFiles(function(){
-      // Default the demo to 5x4 if user config isn't already
-      try { SlotModel.setDimensions(5, 4); } catch (e) {}
+      try {
+        if (self._title && SlotModel.cfg && SlotModel.cfg.identity && SlotModel.cfg.identity.display_name) {
+          self._title.setString(String(SlotModel.cfg.identity.display_name));
+        }
+      } catch (eTitle) {}
+
+      // Respect wizard-configured dimensions from game_config.json
+      try { SlotModel.setDimensions(SlotModel.cfg.math.reel_count || 5, SlotModel.cfg.math.row_count || 4); } catch (e) {}
 
       self._loadBackground();
       self._buildUI();
@@ -613,26 +718,49 @@ var SlotScene = cc.Scene.extend({
   // ---------------- Background ----------------
 
   _loadBackground: function(){
-    var self = this;
     try {
       var bgFile = SlotModel.assets && (SlotModel.assets.background || SlotModel.assets.bg);
       if (!bgFile) return;
 
-      var path = "res/assets/backgrounds/" + bgFile;
+      var candidates = [];
+      if (String(bgFile).indexOf("res/") === 0) candidates.push(String(bgFile));
+      else {
+        candidates.push("res/assets/backgrounds/" + bgFile);
+        candidates.push(String(bgFile));
+      }
 
-      // Force texture load (async safe)
-      cc.textureCache.addImage(path, function(){
+      var self = this;
+      var applyBg = function(bg){
+        if (!bg) return;
         if (self._bgNode) self._bgNode.removeFromParent(true);
-
-        var bg = new cc.Sprite(path);
         bg.setPosition(480, 270);
         self.addChild(bg, 0);
-
         self._fitSpriteTo(bg, 960, 540, true);
-        self.scheduleOnce(function(){ self._fitSpriteTo(bg, 960, 540, true); }, 0.05);
-
+        if (typeof self.scheduleOnce === "function") {
+          self.scheduleOnce(function(){ self._fitSpriteTo(bg, 960, 540, true); }, 0.05);
+        }
         self._bgNode = bg;
-      });
+      };
+
+      var bg = null;
+      for (var i=0; i<candidates.length; i++){
+        try {
+          bg = new cc.Sprite(candidates[i]);
+          var sz = bg.getContentSize && bg.getContentSize();
+          if (sz && sz.width > 0 && sz.height > 0) { applyBg(bg); return; }
+        } catch (e1) { bg = null; }
+      }
+
+      for (var j=0; j<candidates.length; j++){
+        (function(path){
+          try {
+            cc.textureCache.addImage(path, function(tex){
+              if (!tex) return;
+              applyBg(new cc.Sprite(tex));
+            });
+          } catch (e2) {}
+        })(candidates[j]);
+      }
     } catch (e) {}
   },
 
@@ -690,6 +818,77 @@ var SlotScene = cc.Scene.extend({
 
   // ---------------- UI ----------------
 
+  _uiAsset: function(keys){
+    var byStem = (SlotModel.assets && SlotModel.assets.ui_by_stem) ? SlotModel.assets.ui_by_stem : {};
+    for (var i=0;i<keys.length;i++) {
+      var k = String(keys[i] || '').toLowerCase();
+      if (byStem[k]) return "res/assets/ui/" + byStem[k];
+    }
+    return null;
+  },
+
+  _applyButtonTexture: function(node, path, w, h){
+    if (!node || !node._bg || !path) return false;
+    try {
+      node._bg.setTexture(path);
+      var s = node._bg.getContentSize();
+      if (s && s.width > 0 && s.height > 0) {
+        node._bg.setScaleX((w || s.width) / s.width);
+        node._bg.setScaleY((h || s.height) / s.height);
+      }
+      return true;
+    } catch (e) {}
+    return false;
+  },
+
+  _setButtonDisabled: function(node, disabled){
+    if (!node) return;
+    node._disabled = !!disabled;
+    if (node._setState) node._setState(node._disabled ? "off" : "normal");
+    if (node._label) node._label.setOpacity(node._disabled ? 140 : 255);
+  },
+
+  _makeImageButton: function(x, y, label, onClick, states, w, h){
+    var node = this._makeButton(x, y, label, onClick, w, h);
+    var cfg = states || {};
+    var normal = this._uiAsset(cfg.normal || []);
+    var onPath = this._uiAsset(cfg.on || cfg.normal || []);
+    var offPath = this._uiAsset(cfg.off || cfg.normal || []);
+
+    node._img = { normal: normal, on: onPath, off: offPath };
+    var self = this;
+    node._setState = function(st){
+      var pick = node._img && node._img[st] ? node._img[st] : (node._img ? node._img.normal : null);
+      if (!pick) return;
+      self._applyButtonTexture(node, pick, w, h);
+    };
+    node._setState("normal");
+    return node;
+  },
+
+  _makePanel: function(x, y, w, h, bgKeys){
+    var n = new cc.Node();
+    n.setPosition(x, y);
+    n.setContentSize(w, h);
+
+    var bgPath = this._uiAsset(bgKeys || []);
+    if (bgPath) {
+      var sp = new cc.Sprite(bgPath);
+      var sz = sp.getContentSize();
+      if (sz && sz.width && sz.height) {
+        sp.setScaleX(w / sz.width);
+        sp.setScaleY(h / sz.height);
+      }
+      n.addChild(sp);
+    } else {
+      var bg = new cc.LayerColor(cc.color(16, 20, 36, 230), w, h);
+      if (bg.setIgnoreAnchorPointForPosition) bg.setIgnoreAnchorPointForPosition(false);
+      bg.setPosition(-w/2, -h/2);
+      n.addChild(bg);
+    }
+    return n;
+  },
+
   _buildUI: function(){
     var self = this;
 
@@ -716,48 +915,102 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(msg);
     this.ui.msg = msg;
 
-    // --- SPIN ---
-    var spinBtn = this._makeButton(480, 110, I18N.t("spin","SPIN"), function(){
-      self._unlockAudioOnce();           // user gesture -> unlock audio
+    var paylineInfo = new cc.LabelTTF("", "Arial", 14);
+    paylineInfo.setAnchorPoint(0, 1);
+    paylineInfo.setPosition(20, 455);
+    this.uiLayer.addChild(paylineInfo);
+    this.ui.paylineInfo = paylineInfo;
+
+    var winBreakdown = new cc.LabelTTF("", "Arial", 13);
+    winBreakdown.setAnchorPoint(1, 1);
+    winBreakdown.setPosition(940, 455);
+    this.uiLayer.addChild(winBreakdown);
+    this.ui.winBreakdown = winBreakdown;
+
+    // Common dashboard anchor style (from shared UI map)
+    this.ui.spinButtonsPanel = new cc.Node();
+    this.ui.spinButtonsPanel.setPosition(840, 100);
+    this.uiLayer.addChild(this.ui.spinButtonsPanel);
+
+    this.ui.spinBtn = this._makeImageButton(0, 0, I18N.t("spin","SPIN"), function(){
+      self._unlockAudioOnce();
+      self._closeBetPanel(true);
+      self._closeAutoPanel(true);
       self._onSpin();
-    }, 180, 48);
-    this.uiLayer.addChild(spinBtn);
-    this.ui.spinBtn = spinBtn;
+    }, {
+      normal:["btn_spin"],
+      on:["btn_spin_on","btn_spin"],
+      off:["btn_spin_off","btn_spin"]
+    }, 170, 50);
+    this.ui.spinButtonsPanel.addChild(this.ui.spinBtn);
 
-    // --- Bet -/+ ---
-    var betMinus = this._makeButton(330, 110, "-", function(){
+    this.ui.stopBtn = this._makeImageButton(0, 0, "STOP", function(){
+      self._unlockAudioOnce();
+      self.onStopButtonClick();
+    }, {
+      normal:["btn_stop","btn_stop_on"],
+      on:["btn_stop_on","btn_stop"],
+      off:["btn_stop_off","btn_stop"]
+    }, 170, 50);
+    this.ui.spinButtonsPanel.addChild(this.ui.stopBtn);
+    this.ui.stopBtn.setVisible(false);
+
+    this.ui.betPanelButton = this._makeImageButton(930, 52, "BET", function(){
+      self._unlockAudioOnce();
+      self.onOpenBetPanelClick();
+    }, {
+      normal:["btn_bet"],
+      on:["btn_bet_on","btn_bet"],
+      off:["btn_bet_off","btn_bet"]
+    }, 110, 44);
+    this.uiLayer.addChild(this.ui.betPanelButton);
+
+    this.ui.maxBetButton = this._makeImageButton(930, 20, "MAX", function(){
+      self._unlockAudioOnce();
+      self.onSetMaxBetClick();
+    }, {
+      normal:["btn_bet_max","btn_auto_amt"],
+      on:["btn_bet_max","btn_auto_amt_on","btn_auto_amt"],
+      off:["btn_bet_max","btn_auto_amt"]
+    }, 110, 40);
+    this.uiLayer.addChild(this.ui.maxBetButton);
+
+    this.ui.autoButton = this._makeImageButton(760, 52, "AUTO", function(){
+      self._unlockAudioOnce();
+      self.onOpenAutoPanelClick();
+    }, {
+      normal:["btn_auto"],
+      on:["btn_auto_on","btn_auto"],
+      off:["btn_auto_off","btn_auto"]
+    }, 110, 44);
+    this.uiLayer.addChild(this.ui.autoButton);
+
+    this.ui.autoStopButton = this._makeImageButton(760, 20, "STOP AUTO", function(){
+      self._unlockAudioOnce();
+      self.onStopAutoButtonClick();
+    }, {
+      normal:["btn_auto_active","btn_stop_on"],
+      on:["btn_auto_active","btn_stop_on"],
+      off:["btn_auto_active","btn_stop_off"]
+    }, 110, 40);
+    this.uiLayer.addChild(this.ui.autoStopButton);
+    this.ui.autoStopButton.setVisible(false);
+
+    var linesBtn = this._makeButton(300, 60, "PAYLINES", function(){
       self._unlockAudioOnce();
       if (self.busy) return;
-      SlotModel.state.betIndex = Math.max(0, (SlotModel.state.betIndex||0) - 1);
+      var choices = [1, 5, 10, 15, 20, 25, 50, 100, 200];
+      var cur = (SlotModel.cfg && SlotModel.cfg.math && SlotModel.cfg.math.payline_count) ? SlotModel.cfg.math.payline_count : ((SlotModel.paylines || []).length || 25);
+      var next = choices[0];
+      for (var i=0;i<choices.length;i++) { if (choices[i] > cur) { next = choices[i]; break; } }
+      if (cur >= choices[choices.length - 1]) next = choices[0];
+      SlotModel.setPaylineCount(next);
+      self._showAllPaylines = false;
       self._refreshUI();
       try { if (!self._muted) Audio.play("click"); } catch(e){}
-    }, 60, 48);
-    this.uiLayer.addChild(betMinus);
+    }, 130, 44);
+    this.uiLayer.addChild(linesBtn);
 
-    var betPlus = this._makeButton(630, 110, "+", function(){
-      self._unlockAudioOnce();
-      if (self.busy) return;
-      var levels = SlotModel.cfg.math.bet_levels || [1];
-      SlotModel.state.betIndex = Math.min(levels.length - 1, (SlotModel.state.betIndex||0) + 1);
-      self._refreshUI();
-      try { if (!self._muted) Audio.play("click"); } catch(e){}
-    }, 60, 48);
-    this.uiLayer.addChild(betPlus);
-
-    // --- Bet level cycle button (selectable) ---
-    var betCycle = this._makeButton(820, 110, "BET LVL", function(){
-      self._unlockAudioOnce();
-      if (self.busy) return;
-      var levels = SlotModel.cfg.math.bet_levels || [1];
-      var idx = (SlotModel.state.betIndex||0) + 1;
-      if (idx >= levels.length) idx = 0;
-      SlotModel.state.betIndex = idx;
-      self._refreshUI();
-      try { if (!self._muted) Audio.play("click"); } catch(e){}
-    }, 120, 48);
-    this.uiLayer.addChild(betCycle);
-
-    // --- Reels/Rows selectable (in-game) ---
     var reelsBtn = this._makeButton(140, 110, "REELS", function(){
       self._unlockAudioOnce();
       if (self.busy) return;
@@ -784,7 +1037,53 @@ var SlotScene = cc.Scene.extend({
     }, 120, 44);
     this.uiLayer.addChild(rowsBtn);
 
-    // --- Mute ---
+    this.ui.betInfoPanel = this._makePanel(480, 250, 680, 250, ["bet_popup_panel","popup_panel_bg","bet_panel","panel_bet"]);
+    this.uiLayer.addChild(this.ui.betInfoPanel, 200);
+    this.ui.betInfoPanel.setVisible(false);
+
+    this.ui.betPanelCloseButton = this._makeImageButton(300, 95, "X", function(){ self.onCloseBetPanelClick(); }, { normal:["btn_menu_close"], on:["btn_close_on_menu","btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 54, 40);
+    this.ui.betInfoPanel.addChild(this.ui.betPanelCloseButton);
+    this.ui.betPanel_decBet = this._makeImageButton(-210, -5, "-", function(){ self.onDecreaseBetClick(); }, { normal:["btn_bet_minus"], on:["btn_bet_minus_on","btn_bet_minus"], off:["btn_bet_minus_off","btn_bet_minus"] }, 80, 46);
+    this.ui.betInfoPanel.addChild(this.ui.betPanel_decBet);
+    this.ui.betPanel_incBet = this._makeImageButton(210, -5, "+", function(){ self.onIncreaseBetClick(); }, { normal:["btn_bet_plus"], on:["btn_bet_plus_on","btn_bet_plus"], off:["btn_bet_plus_off","btn_bet_plus"] }, 80, 46);
+    this.ui.betInfoPanel.addChild(this.ui.betPanel_incBet);
+    this.ui.betPanelMaxBtn = this._makeImageButton(0, -78, "MAX BET", function(){ self.onSetMaxBetClick(); }, { normal:["btn_bet_max","btn_auto_amt"], on:["btn_bet_max","btn_auto_amt_on","btn_auto_amt"], off:["btn_bet_max","btn_auto_amt"] }, 170, 44);
+    this.ui.betInfoPanel.addChild(this.ui.betPanelMaxBtn);
+    this.ui.betPanelText = new cc.LabelTTF("", "Arial", 19);
+    this.ui.betPanelText.setPosition(0, 42);
+    this.ui.betInfoPanel.addChild(this.ui.betPanelText);
+
+    this.ui.autoPanelInfo = this._makePanel(480, 250, 760, 320, ["auto_popup_panel","popup_panel_bg","bet_popup_panel","auto_panel"]);
+    this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
+    this.ui.autoPanelInfo.setVisible(false);
+
+    this.ui.autoPanelCloseButton = this._makeImageButton(340, 126, "X", function(){ self.onCloseAutoPanelClick(); }, { normal:["btn_menu_close"], on:["btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 54, 40);
+    this.ui.autoPanelInfo.addChild(this.ui.autoPanelCloseButton);
+
+    this.ui.autoCountLabel = new cc.LabelTTF("Auto count: 0", "Arial", 18);
+    this.ui.autoCountLabel.setPosition(0, 95);
+    this.ui.autoPanelInfo.addChild(this.ui.autoCountLabel);
+
+    var counts = [20, 50, 100, 200, 500, 1000];
+    this.ui.autoCountButtons = [];
+    for (var ci=0; ci<counts.length; ci++) {
+      (function(idx){
+        var x = -240 + (idx % 3) * 240;
+        var y = (idx < 3) ? 35 : -25;
+        var cnt = counts[idx];
+        var b = self._makeImageButton(x, y, String(cnt), function(){ self.enableAutoSpin(null, cnt); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_off"] }, 130, 44);
+        self.ui.autoPanelInfo.addChild(b);
+        self.ui.autoCountButtons.push(b);
+      })(ci);
+    }
+
+    this.ui.btnQuickSpin = this._makeImageButton(120, -88, "QUICK", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 130, 42);
+    this.ui.autoPanelInfo.addChild(this.ui.btnQuickSpin);
+    this.ui.btnTurboSpin = this._makeImageButton(-120, -88, "TURBO", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 130, 42);
+    this.ui.autoPanelInfo.addChild(this.ui.btnTurboSpin);
+    this.ui.btnAutoSpin = this._makeImageButton(0, -138, "START AUTO", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 190, 44);
+    this.ui.autoPanelInfo.addChild(this.ui.btnAutoSpin);
+
     var muteBtn = this._makeButton(900, 520, "VOL", function(){
       self._unlockAudioOnce();
       self._muted = !self._muted;
@@ -793,14 +1092,153 @@ var SlotScene = cc.Scene.extend({
     }, 70, 34);
     this.uiLayer.addChild(muteBtn);
 
-    // win lines
     if (cc.DrawNode) {
-      try {
-        this.lineDraw = new cc.DrawNode();
-        this.gridLayer.addChild(this.lineDraw, 30);
-      } catch (e) { this.lineDraw = null; }
+      try { this.lineDraw = new cc.DrawNode(); this.gridLayer.addChild(this.lineDraw, 30); } catch (e) { this.lineDraw = null; }
     }
     if (!this.lineDraw) this.lineDraw = { clear:function(){}, drawSegment:function(){} };
+
+    this.setSpinMode("normal");
+    this._refreshControlStates();
+    this._refreshUI();
+  },
+
+  _setSpinButtonsState: function(spinning){
+    if (!this.ui) return;
+    if (this.ui.spinBtn) this.ui.spinBtn.setVisible(!spinning);
+    if (this.ui.stopBtn) this.ui.stopBtn.setVisible(!!spinning);
+  },
+
+  onSpinButtonClick: function(){ this._onSpin(); },
+
+  onStopButtonClick: function(){
+    if (!this.busy) return;
+    this._forceStopRequested = true;
+    this._setMessage("Stopping...");
+  },
+
+  onOpenBetPanelClick: function(){
+    if (this.busy) return;
+    this._closeAutoPanel(true);
+    this._betPanelOpen = true;
+    if (this.ui && this.ui.betInfoPanel) this.ui.betInfoPanel.setVisible(true);
+    this._refreshControlStates();
+    this._updateBetBtnVisibility();
+    try { if (!this._muted) Audio.play("click"); } catch(e){}
+  },
+
+  onCloseBetPanelClick: function(){ this._closeBetPanel(); },
+
+  _closeBetPanel: function(forcedClose){
+    this._betPanelOpen = false;
+    if (this.ui && this.ui.betInfoPanel) this.ui.betInfoPanel.setVisible(false);
+    this._refreshControlStates();
+    if (!forcedClose) { try { if (!this._muted) Audio.play("click"); } catch(e){} }
+  },
+
+  onIncreaseBetClick: function(){
+    if (this.busy) return;
+    var levels = SlotModel.cfg.math.bet_levels || [1];
+    SlotModel.state.betIndex = Math.min(levels.length - 1, (SlotModel.state.betIndex||0) + 1);
+    this._updateBetBtnVisibility();
+    this._refreshControlStates();
+    this._refreshUI();
+  },
+
+  onDecreaseBetClick: function(){
+    if (this.busy) return;
+    SlotModel.state.betIndex = Math.max(0, (SlotModel.state.betIndex||0) - 1);
+    this._updateBetBtnVisibility();
+    this._refreshControlStates();
+    this._refreshUI();
+  },
+
+  onSetMaxBetClick: function(){
+    if (this.busy) return;
+    var levels = SlotModel.cfg.math.bet_levels || [1];
+    SlotModel.state.betIndex = Math.max(0, levels.length - 1);
+    this._updateBetBtnVisibility();
+    this._refreshControlStates();
+    this._refreshUI();
+  },
+
+  _updateBetBtnVisibility: function(){
+    var levels = SlotModel.cfg.math.bet_levels || [1];
+    var idx = SlotModel.state.betIndex || 0;
+    var min = 0, max = Math.max(0, levels.length - 1);
+    if (this.ui && this.ui.betPanel_decBet) this._setButtonDisabled(this.ui.betPanel_decBet, !(idx > min));
+    if (this.ui && this.ui.betPanel_incBet) this._setButtonDisabled(this.ui.betPanel_incBet, !(idx < max));
+    if (this.ui && this.ui.betPanelMaxBtn) this._setButtonDisabled(this.ui.betPanelMaxBtn, !(idx < max));
+    if (this.ui && this.ui.betPanelText) this.ui.betPanelText.setString("BET LEVEL x" + String(SlotModel.betLevel()));
+  },
+
+  onOpenAutoPanelClick: function(){
+    if (this.busy) return;
+    this._closeBetPanel(true);
+    this._autoPanelOpen = true;
+    if (this.ui && this.ui.autoPanelInfo) this.ui.autoPanelInfo.setVisible(true);
+    this._refreshControlStates();
+    this._updateAutoPanelLabel();
+    try { if (!this._muted) Audio.play("click"); } catch(e){}
+  },
+
+  onCloseAutoPanelClick: function(){ this._closeAutoPanel(); },
+
+  _closeAutoPanel: function(forcedClose){
+    this._autoPanelOpen = false;
+    if (this.ui && this.ui.autoPanelInfo) this.ui.autoPanelInfo.setVisible(false);
+    this._refreshControlStates();
+    if (!forcedClose) { try { if (!this._muted) Audio.play("click"); } catch(e){} }
+  },
+
+  enableAutoSpin: function(_event, autoSpinCount){
+    this._autoRemaining = Math.max(0, parseInt(autoSpinCount || 0, 10) || 0);
+    this._updateAutoPanelLabel();
+    this._refreshControlStates();
+  },
+
+  onAutoButtonClick: function(){
+    if (this.busy) return;
+    if ((this._autoRemaining || 0) <= 0) this._autoRemaining = 20;
+    this._closeAutoPanel(true);
+    if (this.ui && this.ui.autoStopButton) this.ui.autoStopButton.setVisible(true);
+    this._onSpin();
+  },
+
+  onStopAutoButtonClick: function(){
+    this._autoRemaining = 0;
+    if (this.ui && this.ui.autoStopButton) this.ui.autoStopButton.setVisible(false);
+    this._setMessage("Auto stopped");
+    this._refreshControlStates();
+  },
+
+  setSpinMode: function(mode){
+    this._spinMode = mode || "normal";
+    if (this.ui && this.ui.btnQuickSpin && this.ui.btnQuickSpin._setState) this.ui.btnQuickSpin._setState(this._spinMode === "quick" ? "on" : "normal");
+    if (this.ui && this.ui.btnTurboSpin && this.ui.btnTurboSpin._setState) this.ui.btnTurboSpin._setState(this._spinMode === "turbo" ? "on" : "normal");
+  },
+
+  onQuickSpinButtonClick: function(){ this.setSpinMode("quick"); this._updateAutoPanelLabel(); },
+  onTurboSpinButtonClick: function(){ this.setSpinMode("turbo"); this._updateAutoPanelLabel(); },
+
+  _updateAutoPanelLabel: function(){
+    if (this.ui && this.ui.autoCountLabel) {
+      this.ui.autoCountLabel.setString("Auto count: " + String(this._autoRemaining || 0) + " | Speed: " + String(this._spinMode || "normal").toUpperCase());
+    }
+  },
+
+  _refreshControlStates: function(){
+    var hasOverlay = !!(this._autoPanelOpen || this._betPanelOpen || this.busy);
+    if (this.ui && this.ui.spinBtn) this._setButtonDisabled(this.ui.spinBtn, hasOverlay);
+    if (this.ui && this.ui.betPanelButton) this._setButtonDisabled(this.ui.betPanelButton, !!(this.busy || this._autoPanelOpen));
+    if (this.ui && this.ui.autoButton) this._setButtonDisabled(this.ui.autoButton, !!(this.busy || this._betPanelOpen));
+
+    var canAutoStart = (this._autoRemaining || 0) > 0;
+    if (this.ui && this.ui.btnAutoSpin) this._setButtonDisabled(this.ui.btnAutoSpin, !canAutoStart);
+
+    if (this.ui && this.ui.autoStopButton && this.ui.autoStopButton._setState) {
+      var active = (this._autoRemaining || 0) > 0;
+      this.ui.autoStopButton._setState(active ? "normal" : "off");
+    }
   },
 
   _makeButton: function (x, y, label, onClick, w, h){
@@ -815,6 +1253,7 @@ var SlotScene = cc.Scene.extend({
     if (bg.setIgnoreAnchorPointForPosition) bg.setIgnoreAnchorPointForPosition(false);
     bg.setPosition(-w/2, -h/2);
     node.addChild(bg);
+    node._bg = bg;
 
     var txt = new cc.LabelTTF(label, "Arial", Math.max(14, Math.floor(h*0.45)));
     txt.setPosition(0,0);
@@ -825,12 +1264,22 @@ var SlotScene = cc.Scene.extend({
       event: cc.EventListener.TOUCH_ONE_BY_ONE,
       swallowTouches: true,
       onTouchBegan: function(t){
+        if (!node.isVisible || !node.isVisible()) return false;
+        if (node._disabled) return false;
         var p = node.convertToNodeSpace(t.getLocation());
         var s = node.getContentSize();
         var r = cc.rect(-s.width/2, -s.height/2, s.width, s.height);
-        return cc.rectContainsPoint(r, p);
+        var hit = cc.rectContainsPoint(r, p);
+        if (hit && node._setState) node._setState("on");
+        return hit;
       },
-      onTouchEnded: function(){ if (onClick) onClick(); }
+      onTouchEnded: function(){
+        if (node._setState) node._setState(node._disabled ? "off" : "normal");
+        if (onClick && !node._disabled) onClick();
+      },
+      onTouchCancelled: function(){
+        if (node._setState) node._setState(node._disabled ? "off" : "normal");
+      }
     }, node);
 
     return node;
@@ -859,15 +1308,16 @@ var SlotScene = cc.Scene.extend({
     var cellW = 120;
     var cellH = 90;
 
-    // auto-fit: if rows=6 it may push; reduce a bit
-    if (rows >= 5) cellH = 78;
-    if (rows >= 6) cellH = 70;
+    // auto-fit keeps grid clear of bottom controls
+    if (rows >= 4) cellH = 82;
+    if (rows >= 5) cellH = 74;
+    if (rows >= 6) cellH = 66;
 
     var frameW = Math.floor(cellW * 0.9);
     var frameH = Math.floor(cellH * 0.86);
 
     var startX = 480 - ((reels - 1) * cellW) / 2;
-    var startY = 290;
+    var startY = 300 - ((rows - 1) * cellH) / 2;
 
     this._cellW = cellW;
     this._cellH = cellH;
@@ -891,8 +1341,8 @@ var SlotScene = cc.Scene.extend({
         holder.setPosition(x,y);
         this.gridLayer.addChild(holder, 5);
 
-        // Soft frame only
-        var frame = new cc.LayerColor(cc.color(18,26,48,30), frameW, frameH);
+        // Keep slots fully transparent so selected background is clean (no matrix overlay).
+        var frame = new cc.LayerColor(cc.color(18,26,48,0), frameW, frameH);
         if (frame.setIgnoreAnchorPointForPosition) frame.setIgnoreAnchorPointForPosition(false);
         frame.setPosition(-frameW/2, -frameH/2);
         holder.addChild(frame, 1);
@@ -1012,19 +1462,61 @@ var SlotScene = cc.Scene.extend({
     this.ui.balance.setString(I18N.t("balance","Balance") + ": " + SlotModel.state.balance.toFixed(2));
     this.ui.bet.setString(
       I18N.t("bet","Bet") + ": " + SlotModel.totalBet().toFixed(2) +
-      "  (Lvl " + ((SlotModel.state.betIndex||0)+1) + "/" + ((SlotModel.cfg.math.bet_levels||[1]).length) + ")" +
+      "  (Lvl " + ((SlotModel.state.betIndex||0)+1) + "/" + ((SlotModel.cfg.math.bet_levels||[1]).length) + " = x" + SlotModel.betLevel() + ")" +
       "  [" + reels + "x" + rows + "]"
     );
 
     if (SlotModel.state.inFreeSpins && SlotModel.state.freeSpins > 0) {
       this.ui.fs.setString(I18N.t("free_spins","Free Spins") + ": " + SlotModel.state.freeSpins);
+    } else if ((this._autoRemaining||0) > 0) {
+      this.ui.fs.setString("AUTO: " + this._autoRemaining + " (" + String(this._spinMode||"normal").toUpperCase() + ")");
     } else {
       this.ui.fs.setString("");
+    }
+
+    var pls = SlotModel.paylines || [];
+    var title = "Paylines: " + pls.length;
+    this._updateBetBtnVisibility();
+    this._updateAutoPanelLabel();
+
+    if (this._showAllPaylines && pls.length) {
+      var lines = [];
+      for (var i=0; i<pls.length && i<12; i++) lines.push("L" + (i+1) + " " + pls[i].join("-"));
+      this.ui.paylineInfo.setString(title + "\n" + lines.join("\n"));
+    } else {
+      this.ui.paylineInfo.setString(title + "\n(Tap PAYLINES to expand)");
     }
   },
 
   _setMessage: function(txt){
     if (this.ui && this.ui.msg) this.ui.msg.setString(txt || "");
+  },
+
+  _formatWinBreakdown: function(wins){
+    if (!wins || !wins.length) return I18N.t("no_line_wins", "No line wins");
+    var out = [];
+    for (var i=0; i<wins.length; i++){
+      var w = wins[i];
+      if (!w || w.type !== "line") continue;
+      out.push("L" + (w.lineIndex + 1) + ": " + w.amount.toFixed(2));
+      if (out.length >= 6) break;
+    }
+    return out.length ? out.join("\n") : I18N.t("no_line_wins", "No line wins");
+  },
+
+  _showFreeSpinIntro: function(done){
+    var banner = new cc.LabelTTF("FREE SPINS BONUS!", "Arial", 44);
+    banner.setPosition(480, 300);
+    banner.setColor(cc.color(255, 215, 0));
+    banner.setOpacity(0);
+    this.uiLayer.addChild(banner, 1200);
+
+    var fadeIn = cc.fadeIn(0.18);
+    var hold = cc.delayTime(0.65);
+    var pulse = cc.sequence(cc.scaleTo(0.20, 1.08), cc.scaleTo(0.16, 1.0));
+    var fadeOut = cc.fadeOut(0.25);
+    var remove = cc.callFunc(function(){ banner.removeFromParent(true); if (done) done(); });
+    banner.runAction(cc.sequence(fadeIn, cc.spawn(hold, pulse), fadeOut, remove));
   },
 
   _onSpin: function(){
@@ -1034,6 +1526,12 @@ var SlotScene = cc.Scene.extend({
     this.lineDraw.clear();
     this._setMessage("");
 
+    var beforeFS = (SlotModel.state && SlotModel.state.inFreeSpins) ? (SlotModel.state.freeSpins || 0) : 0;
+    var wasInFS = !!(SlotModel.state && SlotModel.state.inFreeSpins && SlotModel.state.freeSpins > 0);
+
+    // Stop previous long win cue as soon as player starts the next spin.
+    try { Audio.stopWin(); } catch (e1) {}
+
     var res = SlotModel.spin();
     if (res.error) {
       if (res.error === "NO_BALANCE") this._setMessage(I18N.t("no_balance","Not enough balance"));
@@ -1041,18 +1539,48 @@ var SlotScene = cc.Scene.extend({
     }
 
     this.busy = true;
+    this._forceStopRequested = false;
+    this._setSpinButtonsState(true);
+    this._refreshControlStates();
 
     if (!this._muted) { try { Audio.play("spin"); } catch(e){} }
 
+    var spinSec = 2.8;
+    if (this._spinMode === "quick") spinSec = 1.8;
+    if (this._spinMode === "turbo") spinSec = 1.2;
+
     // Spin then land exactly on res.grid (no symbol swapping after stop)
-    this._startSpinAnimation(2.8, res.grid, function(){
+    this._startSpinAnimation(spinSec, res.grid, function(){
       self._renderGrid(res.grid);
+
+      var fsStarted = (!res.inFreeSpins && res.freeSpinsRemaining > 0);
+      var fsEnded = (res.inFreeSpins && res.freeSpinsRemaining <= 0);
+      var expectedNoAward = wasInFS ? Math.max(0, beforeFS - 1) : 0;
+      var fsAwarded = Math.max(0, (res.freeSpinsRemaining || 0) - expectedNoAward);
+
+      if (!self._muted && fsStarted) {
+        try { Audio.play("freespin"); } catch(e0){}
+      }
+
+      // Keep free-spin audio continuous through all FS rounds.
+      if (res.freeSpinsRemaining > 0) {
+        try { Audio.startFreeSpinLoop(); } catch(eFS1){}
+      }
 
       if (!self._muted && ((res.wins && res.wins.length) || (res.scatter && res.scatter.amount > 0))) {
         try { Audio.play("win"); } catch(e2){}
       }
 
+      if (!self._muted && fsEnded) {
+        // Reuse freespin event as "feature finished" cue when dedicated end audio is not provided.
+        try { Audio.play("freespin"); } catch(e3){}
+      }
+      if (fsEnded || res.freeSpinsRemaining <= 0) {
+        try { Audio.stopFreeSpinLoop(); } catch(eFS2){}
+      }
+
       self._drawWinLines(res.wins);
+      if (self.ui && self.ui.winBreakdown) self.ui.winBreakdown.setString(self._formatWinBreakdown(res.wins));
 
       var msgParts = [];
       if (res.totalWin > 0) msgParts.push(I18N.t("win","Win") + ": " + res.totalWin.toFixed(2));
@@ -1063,8 +1591,33 @@ var SlotScene = cc.Scene.extend({
       self._setMessage(msgParts.join(" | "));
       self._refreshUI();
 
-      if (typeof self.scheduleOnce === "function") self.scheduleOnce(function(){ self.busy = false; }, 0.2);
-      else setTimeout(function(){ self.busy = false; }, 200);
+      var releaseBusy = function(){ self.busy = false; self._setSpinButtonsState(false); self._refreshControlStates(); };
+      if (typeof self.scheduleOnce === "function") self.scheduleOnce(releaseBusy, 0.2);
+      else setTimeout(releaseBusy, 200);
+
+      // Auto-play remaining free spins + optional user-selected autoplay count.
+      var hasFeatureAuto = (res.freeSpinsRemaining > 0);
+      var hasUserAuto = ((self._autoRemaining || 0) > 0);
+      if (hasFeatureAuto || hasUserAuto) {
+        var autoNext = function(){
+          if (self.busy) return;
+          var stillFeature = (SlotModel.state && SlotModel.state.inFreeSpins && SlotModel.state.freeSpins > 0);
+          var stillUser = ((self._autoRemaining || 0) > 0);
+          if (!stillFeature && !stillUser) return;
+          self._onSpin();
+        };
+
+        var queueAutoSpin = function(delaySec){
+          if (typeof self.scheduleOnce === "function") self.scheduleOnce(autoNext, delaySec);
+          else setTimeout(autoNext, Math.floor(delaySec * 1000));
+        };
+
+        if (!hasFeatureAuto && (self._autoRemaining || 0) > 0) self._autoRemaining = Math.max(0, (self._autoRemaining || 0) - 1);
+        if ((self._autoRemaining || 0) <= 0 && self.ui && self.ui.autoStopButton) self.ui.autoStopButton.setVisible(false);
+
+        if (fsAwarded > 0) self._showFreeSpinIntro(function(){ queueAutoSpin(0.20); });
+        else queueAutoSpin(self._spinMode === "turbo" ? 0.12 : 0.25);
+      }
     });
   },
 
@@ -1112,7 +1665,7 @@ var SlotScene = cc.Scene.extend({
 
     var cellH = this._cellH || 90;
     var baseSpeed = 620;       // fast spin
-    var landWindow = 0.55;     // last part slows & locks to finalGrid
+    var landWindow = 0.90;     // longer easing window for softer stops
     var clipTop = (rows - 1) * cellH + cellH * 0.55;
     var clipBot = -cellH * 0.55;
 
@@ -1151,14 +1704,27 @@ var SlotScene = cc.Scene.extend({
 
         var tStop = self._spinStopTimes[c];
         var timeLeft = tStop - self._spinElapsed;
+
+        if (self._forceStopRequested && timeLeft > 0.22) {
+          self._spinStopTimes[c] = self._spinElapsed + 0.10 + 0.05 * c;
+          tStop = self._spinStopTimes[c];
+          timeLeft = tStop - self._spinElapsed;
+        }
         if (timeLeft <= 0) {
+          self._spinOffsets[c] = 0;
+          layoutReel(c);
           self._spinLocked[c] = true;
+          try { if (!self._muted) Audio.play("reel_stop"); } catch(eStop){}
           continue;
         }
         allStopped = false;
 
         var inLanding = (timeLeft <= landWindow);
-        var speed = inLanding ? baseSpeed * 0.30 : baseSpeed;
+        var speed = baseSpeed;
+        if (inLanding) {
+          var t = Math.max(0, Math.min(1, timeLeft / landWindow)); // 1 -> start of landing, 0 -> final stop
+          speed = baseSpeed * (0.14 + 0.86 * t * t * t);           // ease-out cubic
+        }
 
         self._spinOffsets[c] += speed * dt;
 
@@ -1191,13 +1757,16 @@ var SlotScene = cc.Scene.extend({
           self._setSpriteSymbol(strip2.sprites[0], finalGrid[0][c]);
           self._setSpriteSymbol(strip2.sprites[rows + 1], finalGrid[rows - 1][c]);
 
-          // As we get very close, snap to perfect alignment
-          if (timeLeft <= 0.18) {
-            self._spinOffsets[c] = 0;
+          // As we get very close, gently settle into perfect alignment
+          if (timeLeft <= 0.16) {
+            self._spinOffsets[c] = self._spinOffsets[c] * 0.60;
+            if (self._spinOffsets[c] < 0.75) self._spinOffsets[c] = 0;
             layoutReel(c);
-            self._spinLocked[c] = true;
-            try { if (!self._muted) Audio.play("reel_stop"); } catch(e){}
-            continue;
+            if (self._spinOffsets[c] === 0) {
+              self._spinLocked[c] = true;
+              try { if (!self._muted) Audio.play("reel_stop"); } catch(e){}
+              continue;
+            }
           }
         }
 
@@ -1280,7 +1849,7 @@ def _project_json(js_list: List[str]) -> dict:
         "tag": "gameCanvas",
         "renderMode": 0,
         "engineDir": "frameworks/cocos2d-html5/",
-        "modules": ["cocos2d"],
+        "modules": ["core", "actions", "audio"],
         "jsList": js_list,
     }
 
@@ -1295,6 +1864,12 @@ def _build_asset_manifest(
         stem = Path(fn).stem.upper()
         symbols[stem] = fn
 
+    # UI mapping: file stem => filename (lowercased key)
+    ui_by_stem: Dict[str, str] = {}
+    for fn in ui_files:
+        stem = Path(fn).stem.lower()
+        ui_by_stem[stem] = fn
+
     # Audio mapping: key is file stem
     audio: Dict[str, str] = {}
     for fn in audio_files:
@@ -1304,6 +1879,7 @@ def _build_asset_manifest(
     return {
         "symbols": symbols,
         "ui": ui_files,
+        "ui_by_stem": ui_by_stem,
         "audio": audio,
     }
 
@@ -1321,8 +1897,22 @@ def build_dev_web_zip(
     symbol_uploads_named: Optional[List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]]] = None,
     audio_uploads_named: Optional[List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]]] = None,
     math_pool_zip: Optional[bytes] = None,
+    dashboard_assets_root: Optional[Path] = None,
+    dashboard_assets_required: bool = False,
 ) -> bytes:
     """Build a runnable Cocos2d-HTML5 web build zip."""
+    required_core_files = [
+        core_root / "frameworks" / "cocos2d-html5" / "CCBoot.js",
+        core_root / "frameworks" / "cocos2d-html5" / "cocos2d" / "core" / "platform" / "CCClass.js",
+        core_root / "frameworks" / "cocos2d-html5" / "cocos2d" / "core" / "renderer" / "RendererWebGL.js",
+    ]
+    missing_core = [str(p) for p in required_core_files if not p.exists()]
+    if missing_core:
+        raise FileNotFoundError(
+            "PongGameCore is incomplete for HTML5 build. Missing required engine files:\n- " + "\n- ".join(missing_core) +
+            "\n\nPlease set a full PongGameCore root that contains frameworks/cocos2d-html5/cocos2d/core."
+        )
+
     tmp = Path(tempfile.mkdtemp(prefix="slotmaker_"))
     try:
         web = tmp / "web_build"
@@ -1343,7 +1933,7 @@ def build_dev_web_zip(
             "main.js",
         ]
 
-        write_text(web / "index.html", _INDEX_HTML.replace("__JS_LIST__", json.dumps(js_list)))
+        write_text(web / "index.html", _INDEX_HTML.replace("__JS_LIST__", json.dumps(js_list)).replace("__GAME_TITLE__", spec.identity.display_name))
         write_text(web / "src" / "compat.js", COMPAT_JS)
         write_text(web / "main.js", _MAIN_JS)
         write_text(web / "run_local.py", _RUN_LOCAL_PY)
@@ -1369,6 +1959,50 @@ def build_dev_web_zip(
         # UI images
         ui_files = copy_uploaded_files(ui_uploads or [], web / "res" / "assets" / "ui")
 
+        # Optional: auto-import shared dashboard PNGs from local PGS-Igaming root.
+        copied_dashboard_count = 0
+        if dashboard_assets_root:
+            dash_root = Path(dashboard_assets_root)
+            buttons_dir = dash_root / "buttons"
+            wanted = [
+                "bet_popup_panel.png", "popup_panel_bg.png",
+                "btn_spin.png", "btn_spin_on.png", "btn_spin_off.png",
+                "btn_stop.png", "btn_stop_on.png", "btn_stop_off.png",
+                "btn_bet.png", "btn_bet_on.png", "btn_bet_off.png",
+                "btn_bet_plus.png", "btn_bet_plus_on.png", "btn_bet_plus_off.png",
+                "btn_bet_minus.png", "btn_bet_minus_on.png", "btn_bet_minus_off.png",
+                "btn_bet_max.png",
+                "btn_auto.png", "btn_auto_on.png", "btn_auto_off.png",
+                "btn_auto_active.png",
+                "btn_auto_spin.png", "btn_auto_spin_on.png", "btn_auto_spin_off.png",
+                "btn_auto_amt.png", "btn_auto_amt_on.png",
+                "btn_menu_close.png", "btn_menu_close_on.png", "btn_menu_close_off.png",
+                "btn_close_on_menu.png",
+                "btn_quick_on.png", "btn_quick_off.png",
+                "btn_turbo.png", "btn_turbo_off.png",
+                "btn_speed_quick.png", "btn_speed_quick_on.png",
+                "btn_speed_turbo.png", "btn_speed_turbo_on.png",
+            ]
+            ensure_dir(web / "res" / "assets" / "ui")
+            existing = set(ui_files)
+            for name in wanted:
+                src = (buttons_dir / name)
+                if not src.exists():
+                    src = dash_root / name
+                if src.exists() and src.is_file():
+                    dst = web / "res" / "assets" / "ui" / name
+                    copy_file(src, dst)
+                    if name not in existing:
+                        ui_files.append(name)
+                        existing.add(name)
+                    copied_dashboard_count += 1
+
+            if dashboard_assets_required and copied_dashboard_count == 0:
+                raise FileNotFoundError(
+                    f"Dashboard assets were requested but no PNGs were found under: {dash_root} or {buttons_dir}. "
+                    "Expected files like btn_spin.png / btn_bet.png / btn_auto.png."
+                )
+
         # Background
         bg_file = None
         if background_upload:
@@ -1385,6 +2019,7 @@ def build_dev_web_zip(
         assets_manifest = _build_asset_manifest(sym_files, ui_files, aud_files)
         if bg_file:
             assets_manifest["background"] = bg_file
+            assets_manifest["bg"] = bg_file
         write_json(web / "res" / "assets_manifest.json", assets_manifest)
 
         # Config

@@ -483,7 +483,8 @@ def _step_build() -> None:
     symbol_uploads_named = st.session_state.get("symbol_uploads_named", [])
     ui_uploads = st.session_state.get("ui_uploads") or []
     background_upload = st.session_state.get("bg_upload")
-    if background_upload is None and st.session_state.get("bg_upload_name") and st.session_state.get("bg_upload_bytes"):
+    # Prefer persisted bytes from Assets step (stable across reruns/navigation)
+    if st.session_state.get("bg_upload_name") and st.session_state.get("bg_upload_bytes"):
         background_upload = _MemoryUpload(
             name=str(st.session_state["bg_upload_name"]),
             data=bytes(st.session_state["bg_upload_bytes"]),
@@ -492,16 +493,18 @@ def _step_build() -> None:
     # audio mapping (named)
     audio_named: List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]] = []
     for k, _label in AUDIO_KEYS:
-        f = st.session_state.get(f"aud_{k}")
-        if f is not None:
-            ext = Path(f.name).suffix or ".mp3"
-            audio_named.append((f, f"{k}{ext}"))
-            continue
+        # Prefer persisted bytes (stable); fallback to current widget object.
         b = st.session_state.get(f"aud_{k}_bytes")
         n = st.session_state.get(f"aud_{k}_name")
         if b and n:
             ext = Path(str(n)).suffix or ".mp3"
             audio_named.append((_MemoryUpload(name=str(n), data=bytes(b)), f"{k}{ext}"))
+            continue
+
+        f = st.session_state.get(f"aud_{k}")
+        if f is not None:
+            ext = Path(f.name).suffix or ".mp3"
+            audio_named.append((f, f"{k}{ext}"))
 
     math_pool_zip = st.session_state.get("math_pool_zip")
 

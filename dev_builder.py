@@ -2014,8 +2014,8 @@ def build_dev_web_zip(
 
             if dashboard_assets_required and copied_dashboard_count == 0:
                 raise FileNotFoundError(
-                    f"Dashboard assets were requested but no PNGs were found under: {dash_root} or {buttons_dir}. "
-                    "Expected files like btn_spin.png / btn_bet.png / btn_auto.png."
+                    f"Dashboard assets were requested but no supported UI images were found under: {dash_root} or {buttons_dir}. "
+                    "Expected stems like btn_spin / btn_bet / btn_auto with extensions .png/.webp/.jpg/.jpeg."
                 )
 
         # Background

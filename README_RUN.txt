@@ -38,3 +38,5 @@ Notes
   5) Configurable payload is written in canonical game locations under `assets/gameAssets/games/<id>/configs`, `sprites/generated_symbols`, and `sounds/generated_events`.
   6) The wizard warns if expected `.meta` pairs are missing in the copied base source.
 
+
+- Reference: see `LOCATE_COMMON_ELEMENTS.md` for exact commands and path map to find shared buttons/fonts/help/win UI and core script locations.

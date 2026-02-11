@@ -21,6 +21,7 @@ import streamlit as st
 from .spec import GameSpec
 from .util_fs import (
     copy_tree,
+    copy_file,
     copy_uploaded_files,
     copy_uploaded_files_named,
     ensure_dir,
@@ -1896,6 +1897,7 @@ def build_dev_web_zip(
     symbol_uploads_named: Optional[List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]]] = None,
     audio_uploads_named: Optional[List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]]] = None,
     math_pool_zip: Optional[bytes] = None,
+    dashboard_assets_root: Optional[Path] = None,
 ) -> bytes:
     """Build a runnable Cocos2d-HTML5 web build zip."""
     required_core_files = [
@@ -1955,6 +1957,42 @@ def build_dev_web_zip(
 
         # UI images
         ui_files = copy_uploaded_files(ui_uploads or [], web / "res" / "assets" / "ui")
+
+        # Optional: auto-import shared dashboard PNGs from local PGS-Igaming root.
+        if dashboard_assets_root:
+            dash_root = Path(dashboard_assets_root)
+            buttons_dir = dash_root / "buttons"
+            wanted = [
+                "bet_popup_panel.png", "popup_panel_bg.png",
+                "btn_spin.png", "btn_spin_on.png", "btn_spin_off.png",
+                "btn_stop.png", "btn_stop_on.png", "btn_stop_off.png",
+                "btn_bet.png", "btn_bet_on.png", "btn_bet_off.png",
+                "btn_bet_plus.png", "btn_bet_plus_on.png", "btn_bet_plus_off.png",
+                "btn_bet_minus.png", "btn_bet_minus_on.png", "btn_bet_minus_off.png",
+                "btn_bet_max.png",
+                "btn_auto.png", "btn_auto_on.png", "btn_auto_off.png",
+                "btn_auto_active.png",
+                "btn_auto_spin.png", "btn_auto_spin_on.png", "btn_auto_spin_off.png",
+                "btn_auto_amt.png", "btn_auto_amt_on.png",
+                "btn_menu_close.png", "btn_menu_close_on.png", "btn_menu_close_off.png",
+                "btn_close_on_menu.png",
+                "btn_quick_on.png", "btn_quick_off.png",
+                "btn_turbo.png", "btn_turbo_off.png",
+                "btn_speed_quick.png", "btn_speed_quick_on.png",
+                "btn_speed_turbo.png", "btn_speed_turbo_on.png",
+            ]
+            ensure_dir(web / "res" / "assets" / "ui")
+            existing = set(ui_files)
+            for name in wanted:
+                src = (buttons_dir / name)
+                if not src.exists():
+                    src = dash_root / name
+                if src.exists() and src.is_file():
+                    dst = web / "res" / "assets" / "ui" / name
+                    copy_file(src, dst)
+                    if name not in existing:
+                        ui_files.append(name)
+                        existing.add(name)
 
         # Background
         bg_file = None

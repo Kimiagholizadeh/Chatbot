@@ -48,3 +48,5 @@ Notes
 
 
 - Reference: see `UI_CONTROL_IMPLEMENTATION_MAP.md` for spin/stop, bet popup, max bet, auto count, quick/turbo button actions and locations in code.
+
+- If `PGS-Igaming root` is set, Dev Web build auto-imports dashboard button PNGs from `assets/resources/common/assets/default_ui/dashboard` and `.../dashboard/buttons` into runtime UI assets.

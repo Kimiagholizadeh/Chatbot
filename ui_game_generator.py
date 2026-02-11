@@ -685,6 +685,13 @@ def _step_build() -> None:
 
     math_pool_zip = st.session_state.get("math_pool_zip")
 
+    dashboard_assets_root = None
+    ig_root = str(st.session_state.get("igaming_root_override", "")).strip()
+    if ig_root:
+        cand = Path(ig_root).expanduser() / "assets" / "resources" / "common" / "assets" / "default_ui" / "dashboard"
+        if cand.exists():
+            dashboard_assets_root = cand
+
     st.markdown("### Build outputs")
     st.caption(
         "Choose a packaging mode. The **Dev Web ZIP** is the lightweight in-wizard demo (Cocos2d-HTML5). "
@@ -707,6 +714,7 @@ def _step_build() -> None:
                     background_upload=background_upload,
                     audio_uploads_named=audio_named or None,
                     math_pool_zip=math_pool_zip,
+                    dashboard_assets_root=dashboard_assets_root,
                 )
             except Exception as e:
                 st.exception(e)

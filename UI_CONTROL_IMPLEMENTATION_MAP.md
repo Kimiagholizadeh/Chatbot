@@ -42,3 +42,9 @@ rg -n "spinButtonsPanel|spinBtn|stopBtn|onStopButtonClick|_setSpinButtonsState" 
 rg -n "onOpenBetPanelClick|onCloseBetPanelClick|onIncreaseBetClick|onDecreaseBetClick|onSetMaxBetClick|betInfoPanel" dev_builder.py
 rg -n "onOpenAutoPanelClick|onCloseAutoPanelClick|enableAutoSpin|onAutoButtonClick|onStopAutoButtonClick|onQuickSpinButtonClick|onTurboSpinButtonClick|autoPanelInfo" dev_builder.py
 ```
+
+
+## Button image binding
+- Runtime resolves button/panel textures from `assets_manifest.ui_by_stem` (generated from uploaded UI files).
+- Upload files using shared stems such as: `btn_spin`, `btn_stop`, `btn_bet`, `btn_bet_plus`, `btn_bet_minus`, `btn_bet_max`, `btn_auto`, `btn_auto_spin`, `btn_auto_amt`, `btn_speed_quick`, `btn_speed_turbo`, `btn_menu_close`, `bet_popup_panel`.
+- If an image stem is missing, runtime falls back to the default colored button style.

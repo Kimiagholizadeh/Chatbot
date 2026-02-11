@@ -1898,6 +1898,7 @@ def build_dev_web_zip(
     audio_uploads_named: Optional[List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]]] = None,
     math_pool_zip: Optional[bytes] = None,
     dashboard_assets_root: Optional[Path] = None,
+    dashboard_assets_required: bool = False,
 ) -> bytes:
     """Build a runnable Cocos2d-HTML5 web build zip."""
     required_core_files = [
@@ -1959,6 +1960,7 @@ def build_dev_web_zip(
         ui_files = copy_uploaded_files(ui_uploads or [], web / "res" / "assets" / "ui")
 
         # Optional: auto-import shared dashboard PNGs from local PGS-Igaming root.
+        copied_dashboard_count = 0
         if dashboard_assets_root:
             dash_root = Path(dashboard_assets_root)
             buttons_dir = dash_root / "buttons"
@@ -1993,6 +1995,13 @@ def build_dev_web_zip(
                     if name not in existing:
                         ui_files.append(name)
                         existing.add(name)
+                    copied_dashboard_count += 1
+
+            if dashboard_assets_required and copied_dashboard_count == 0:
+                raise FileNotFoundError(
+                    f"Dashboard assets were requested but no PNGs were found under: {dash_root} or {buttons_dir}. "
+                    "Expected files like btn_spin.png / btn_bet.png / btn_auto.png."
+                )
 
         # Background
         bg_file = None

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -54,6 +55,25 @@ def _resolve_core_root(override: str) -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return get_core_root()
+
+
+def _resolve_igaming_root(override: str) -> Optional[Path]:
+    txt = (override or "").strip()
+    if txt:
+        p = Path(txt).expanduser()
+        return p.resolve() if p.exists() else p
+
+    # Heuristic: from PONGGAMECORE_ROOT sibling workspace folder.
+    core_env = os.environ.get("PONGGAMECORE_ROOT", "").strip()
+    if core_env:
+        core = Path(core_env).expanduser()
+        for par in [core] + list(core.parents):
+            if par.name.lower() == "workspace":
+                cand = par / "PGS-Igaming"
+                if cand.exists():
+                    return cand.resolve()
+
+    return None
 
 
 def _parse_csv_floats(text: str) -> List[float]:
@@ -158,6 +178,10 @@ def _step_core_paths() -> None:
         key="igaming_root_override",
         help="Optional for future 'production packaging' mode. Example: C:\\Users\\...\\Workspace\\PGS-Igaming",
     )
+
+    ig_resolved = _resolve_igaming_root(st.session_state.get("igaming_root_override", ""))
+    if ig_resolved and Path(ig_resolved).exists():
+        st.caption(f"PGS-Igaming root resolved: {ig_resolved}")
 
     core_root = _resolve_core_root(st.session_state["core_root_override"])
     ok, msg = core_health_report(core_root)
@@ -686,11 +710,13 @@ def _step_build() -> None:
     math_pool_zip = st.session_state.get("math_pool_zip")
 
     dashboard_assets_root = None
-    ig_root = str(st.session_state.get("igaming_root_override", "")).strip()
-    if ig_root:
-        cand = Path(ig_root).expanduser() / "assets" / "resources" / "common" / "assets" / "default_ui" / "dashboard"
+    dashboard_assets_required = False
+    ig_root_path = _resolve_igaming_root(str(st.session_state.get("igaming_root_override", "")))
+    if ig_root_path:
+        cand = Path(ig_root_path) / "assets" / "resources" / "common" / "assets" / "default_ui" / "dashboard"
         if cand.exists():
             dashboard_assets_root = cand
+            dashboard_assets_required = True
 
     st.markdown("### Build outputs")
     st.caption(
@@ -715,6 +741,7 @@ def _step_build() -> None:
                     audio_uploads_named=audio_named or None,
                     math_pool_zip=math_pool_zip,
                     dashboard_assets_root=dashboard_assets_root,
+                    dashboard_assets_required=dashboard_assets_required,
                 )
             except Exception as e:
                 st.exception(e)

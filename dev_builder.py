@@ -947,7 +947,7 @@ var SlotScene = cc.Scene.extend({
       self._unlockAudioOnce();
       self.onStopButtonClick();
     }, {
-      normal:["btn_stop_on","btn_stop"],
+      normal:["btn_stop","btn_stop_on"],
       on:["btn_stop_on","btn_stop"],
       off:["btn_stop_off","btn_stop"]
     }, 170, 50);
@@ -968,9 +968,9 @@ var SlotScene = cc.Scene.extend({
       self._unlockAudioOnce();
       self.onSetMaxBetClick();
     }, {
-      normal:["btn_auto_amt","btn_bet_max"],
-      on:["btn_auto_amt_on","btn_auto_amt","btn_bet_max"],
-      off:["btn_auto_amt","btn_bet_max"]
+      normal:["btn_bet_max","btn_auto_amt"],
+      on:["btn_bet_max","btn_auto_amt_on","btn_auto_amt"],
+      off:["btn_bet_max","btn_auto_amt"]
     }, 110, 40);
     this.uiLayer.addChild(this.ui.maxBetButton);
 
@@ -1036,7 +1036,7 @@ var SlotScene = cc.Scene.extend({
     }, 120, 44);
     this.uiLayer.addChild(rowsBtn);
 
-    this.ui.betInfoPanel = this._makePanel(480, 250, 680, 250, ["bet_popup_panel","bet_panel","panel_bet"]);
+    this.ui.betInfoPanel = this._makePanel(480, 250, 680, 250, ["bet_popup_panel","popup_panel_bg","bet_panel","panel_bet"]);
     this.uiLayer.addChild(this.ui.betInfoPanel, 200);
     this.ui.betInfoPanel.setVisible(false);
 
@@ -1046,13 +1046,13 @@ var SlotScene = cc.Scene.extend({
     this.ui.betInfoPanel.addChild(this.ui.betPanel_decBet);
     this.ui.betPanel_incBet = this._makeImageButton(210, -5, "+", function(){ self.onIncreaseBetClick(); }, { normal:["btn_bet_plus"], on:["btn_bet_plus_on","btn_bet_plus"], off:["btn_bet_plus_off","btn_bet_plus"] }, 80, 46);
     this.ui.betInfoPanel.addChild(this.ui.betPanel_incBet);
-    this.ui.betPanelMaxBtn = this._makeImageButton(0, -78, "MAX BET", function(){ self.onSetMaxBetClick(); }, { normal:["btn_auto_amt","btn_bet_max"], on:["btn_auto_amt_on","btn_auto_amt","btn_bet_max"], off:["btn_auto_amt","btn_bet_max"] }, 170, 44);
+    this.ui.betPanelMaxBtn = this._makeImageButton(0, -78, "MAX BET", function(){ self.onSetMaxBetClick(); }, { normal:["btn_bet_max","btn_auto_amt"], on:["btn_bet_max","btn_auto_amt_on","btn_auto_amt"], off:["btn_bet_max","btn_auto_amt"] }, 170, 44);
     this.ui.betInfoPanel.addChild(this.ui.betPanelMaxBtn);
     this.ui.betPanelText = new cc.LabelTTF("", "Arial", 19);
     this.ui.betPanelText.setPosition(0, 42);
     this.ui.betInfoPanel.addChild(this.ui.betPanelText);
 
-    this.ui.autoPanelInfo = this._makePanel(480, 250, 760, 320, ["auto_popup_panel","auto_panel","bet_popup_panel"]);
+    this.ui.autoPanelInfo = this._makePanel(480, 250, 760, 320, ["auto_popup_panel","popup_panel_bg","bet_popup_panel","auto_panel"]);
     this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
     this.ui.autoPanelInfo.setVisible(false);
 
@@ -1097,6 +1097,7 @@ var SlotScene = cc.Scene.extend({
     if (!this.lineDraw) this.lineDraw = { clear:function(){}, drawSegment:function(){} };
 
     this.setSpinMode("normal");
+    this._refreshControlStates();
     this._refreshUI();
   },
 
@@ -1119,6 +1120,7 @@ var SlotScene = cc.Scene.extend({
     this._closeAutoPanel(true);
     this._betPanelOpen = true;
     if (this.ui && this.ui.betInfoPanel) this.ui.betInfoPanel.setVisible(true);
+    this._refreshControlStates();
     this._updateBetBtnVisibility();
     try { if (!this._muted) Audio.play("click"); } catch(e){}
   },
@@ -1128,6 +1130,7 @@ var SlotScene = cc.Scene.extend({
   _closeBetPanel: function(forcedClose){
     this._betPanelOpen = false;
     if (this.ui && this.ui.betInfoPanel) this.ui.betInfoPanel.setVisible(false);
+    this._refreshControlStates();
     if (!forcedClose) { try { if (!this._muted) Audio.play("click"); } catch(e){} }
   },
 
@@ -1136,6 +1139,7 @@ var SlotScene = cc.Scene.extend({
     var levels = SlotModel.cfg.math.bet_levels || [1];
     SlotModel.state.betIndex = Math.min(levels.length - 1, (SlotModel.state.betIndex||0) + 1);
     this._updateBetBtnVisibility();
+    this._refreshControlStates();
     this._refreshUI();
   },
 
@@ -1143,6 +1147,7 @@ var SlotScene = cc.Scene.extend({
     if (this.busy) return;
     SlotModel.state.betIndex = Math.max(0, (SlotModel.state.betIndex||0) - 1);
     this._updateBetBtnVisibility();
+    this._refreshControlStates();
     this._refreshUI();
   },
 
@@ -1151,6 +1156,7 @@ var SlotScene = cc.Scene.extend({
     var levels = SlotModel.cfg.math.bet_levels || [1];
     SlotModel.state.betIndex = Math.max(0, levels.length - 1);
     this._updateBetBtnVisibility();
+    this._refreshControlStates();
     this._refreshUI();
   },
 
@@ -1169,6 +1175,7 @@ var SlotScene = cc.Scene.extend({
     this._closeBetPanel(true);
     this._autoPanelOpen = true;
     if (this.ui && this.ui.autoPanelInfo) this.ui.autoPanelInfo.setVisible(true);
+    this._refreshControlStates();
     this._updateAutoPanelLabel();
     try { if (!this._muted) Audio.play("click"); } catch(e){}
   },
@@ -1178,12 +1185,14 @@ var SlotScene = cc.Scene.extend({
   _closeAutoPanel: function(forcedClose){
     this._autoPanelOpen = false;
     if (this.ui && this.ui.autoPanelInfo) this.ui.autoPanelInfo.setVisible(false);
+    this._refreshControlStates();
     if (!forcedClose) { try { if (!this._muted) Audio.play("click"); } catch(e){} }
   },
 
   enableAutoSpin: function(_event, autoSpinCount){
     this._autoRemaining = Math.max(0, parseInt(autoSpinCount || 0, 10) || 0);
     this._updateAutoPanelLabel();
+    this._refreshControlStates();
   },
 
   onAutoButtonClick: function(){
@@ -1198,6 +1207,7 @@ var SlotScene = cc.Scene.extend({
     this._autoRemaining = 0;
     if (this.ui && this.ui.autoStopButton) this.ui.autoStopButton.setVisible(false);
     this._setMessage("Auto stopped");
+    this._refreshControlStates();
   },
 
   setSpinMode: function(mode){
@@ -1212,6 +1222,21 @@ var SlotScene = cc.Scene.extend({
   _updateAutoPanelLabel: function(){
     if (this.ui && this.ui.autoCountLabel) {
       this.ui.autoCountLabel.setString("Auto count: " + String(this._autoRemaining || 0) + " | Speed: " + String(this._spinMode || "normal").toUpperCase());
+    }
+  },
+
+  _refreshControlStates: function(){
+    var hasOverlay = !!(this._autoPanelOpen || this._betPanelOpen || this.busy);
+    if (this.ui && this.ui.spinBtn) this._setButtonDisabled(this.ui.spinBtn, hasOverlay);
+    if (this.ui && this.ui.betPanelButton) this._setButtonDisabled(this.ui.betPanelButton, !!(this.busy || this._autoPanelOpen));
+    if (this.ui && this.ui.autoButton) this._setButtonDisabled(this.ui.autoButton, !!(this.busy || this._betPanelOpen));
+
+    var canAutoStart = (this._autoRemaining || 0) > 0;
+    if (this.ui && this.ui.btnAutoSpin) this._setButtonDisabled(this.ui.btnAutoSpin, !canAutoStart);
+
+    if (this.ui && this.ui.autoStopButton && this.ui.autoStopButton._setState) {
+      var active = (this._autoRemaining || 0) > 0;
+      this.ui.autoStopButton._setState(active ? "normal" : "off");
     }
   },
 
@@ -1515,6 +1540,7 @@ var SlotScene = cc.Scene.extend({
     this.busy = true;
     this._forceStopRequested = false;
     this._setSpinButtonsState(true);
+    this._refreshControlStates();
 
     if (!this._muted) { try { Audio.play("spin"); } catch(e){} }
 
@@ -1564,7 +1590,7 @@ var SlotScene = cc.Scene.extend({
       self._setMessage(msgParts.join(" | "));
       self._refreshUI();
 
-      var releaseBusy = function(){ self.busy = false; self._setSpinButtonsState(false); };
+      var releaseBusy = function(){ self.busy = false; self._setSpinButtonsState(false); self._refreshControlStates(); };
       if (typeof self.scheduleOnce === "function") self.scheduleOnce(releaseBusy, 0.2);
       else setTimeout(releaseBusy, 200);
 

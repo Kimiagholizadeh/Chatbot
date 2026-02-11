@@ -40,3 +40,9 @@ Notes
 
 
 - Reference: see `LOCATE_COMMON_ELEMENTS.md` for exact commands and path map to find shared buttons/fonts/help/win UI and core script locations.
+
+- To use an LLM to review this code quickly:
+  1) Open step "LLM Code Review" in the wizard.
+  2) Click "Generate LLM Review Bundle ZIP".
+  3) Upload the ZIP to your LLM and start with `LLM_REVIEW_PROMPT.md`.
+

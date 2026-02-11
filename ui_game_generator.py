@@ -11,6 +11,7 @@ from .dev_builder import build_dev_web_zip
 from .cocos_creator_builder import build_cocos_creator_web_zip
 from .math_pool_engine import PoolConfig, export_math_pool_zip
 from .pgs_packager import build_pgs_configurable_package_zip, build_pgs_game_package_zip
+from .llm_review_helper import build_llm_review_bundle_zip
 from .paylines import generate_paylines
 from .spec import (
     FeatureConfig,
@@ -132,6 +133,7 @@ def show_game_generator() -> None:
         ("Localization", _step_localization),
         ("Math Pool (optional)", _step_math_pool),
         ("PGS Package (9452)", _step_pgs_package),
+        ("LLM Code Review", _step_llm_review),
         ("Build", _step_build),
     ]
 
@@ -538,6 +540,49 @@ def _step_pgs_package() -> None:
                 mime="application/zip",
             )
             st.success("Done. Configurable package generated with base engine elements + user-selected symbols/audio/math payload.")
+
+
+
+def _step_llm_review() -> None:
+    st.markdown("### Export package for LLM code review")
+    st.caption("Creates a ZIP with key source files + a ready-to-use review prompt.")
+
+    default_files = [
+        "ui_game_generator.py",
+        "dev_builder.py",
+        "math_pool_engine.py",
+        "pgs_packager.py",
+        "cocos_creator_builder.py",
+        "core_paths.py",
+        "spec.py",
+        "README_RUN.txt",
+        "LOCATE_COMMON_ELEMENTS.md",
+    ]
+    st.text_area(
+        "Files to include (one per line)",
+        value="\n".join(default_files),
+        height=220,
+        key="llm_review_files_txt",
+    )
+
+    if st.button("Generate LLM Review Bundle ZIP"):
+        selected = [x.strip() for x in str(st.session_state.get("llm_review_files_txt", "")).splitlines() if x.strip()]
+        try:
+            data, warnings = build_llm_review_bundle_zip(repo_root=Path(__file__).resolve().parent, selected_rel_paths=selected)
+        except Exception as e:
+            st.exception(e)
+            return
+
+        for w in warnings:
+            st.warning(w)
+
+        st.download_button(
+            "Download LLM Review Bundle ZIP",
+            data=data,
+            file_name="llm_code_review_bundle.zip",
+            mime="application/zip",
+        )
+        st.success("Done. Upload this ZIP to your LLM and use LLM_REVIEW_PROMPT.md as the review prompt.")
 
 def _step_build() -> None:
     core_root = _resolve_core_root(st.session_state.get("core_root_override",""))

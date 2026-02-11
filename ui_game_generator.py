@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -10,6 +11,8 @@ from .core_paths import core_health_report, get_core_root
 from .dev_builder import build_dev_web_zip
 from .cocos_creator_builder import build_cocos_creator_web_zip
 from .math_pool_engine import PoolConfig, export_math_pool_zip
+from .pgs_packager import build_pgs_configurable_package_zip, build_pgs_game_package_zip
+from .llm_review_helper import build_llm_review_bundle_zip
 from .paylines import generate_paylines
 from .spec import (
     FeatureConfig,
@@ -33,11 +36,44 @@ AUDIO_KEYS = [
 ]
 
 
+class _MemoryUpload:
+    """Small adapter with UploadedFile-like API for build functions."""
+
+    def __init__(self, *, name: str, data: bytes) -> None:
+        self.name = name
+        self._data = data
+
+    def getvalue(self) -> bytes:
+        return self._data
+
+    def getbuffer(self):
+        return memoryview(self._data)
+
+
 def _resolve_core_root(override: str) -> Path:
     override = (override or "").strip()
     if override:
         return Path(override).expanduser().resolve()
     return get_core_root()
+
+
+def _resolve_igaming_root(override: str) -> Optional[Path]:
+    txt = (override or "").strip()
+    if txt:
+        p = Path(txt).expanduser()
+        return p.resolve() if p.exists() else p
+
+    # Heuristic: from PONGGAMECORE_ROOT sibling workspace folder.
+    core_env = os.environ.get("PONGGAMECORE_ROOT", "").strip()
+    if core_env:
+        core = Path(core_env).expanduser()
+        for par in [core] + list(core.parents):
+            if par.name.lower() == "workspace":
+                cand = par / "PGS-Igaming"
+                if cand.exists():
+                    return cand.resolve()
+
+    return None
 
 
 def _parse_csv_floats(text: str) -> List[float]:
@@ -116,6 +152,8 @@ def show_game_generator() -> None:
         ("Assets (BG + Audio)", _step_assets),
         ("Localization", _step_localization),
         ("Math Pool (optional)", _step_math_pool),
+        ("PGS Package (9452)", _step_pgs_package),
+        ("LLM Code Review", _step_llm_review),
         ("Build", _step_build),
     ]
 
@@ -140,6 +178,10 @@ def _step_core_paths() -> None:
         key="igaming_root_override",
         help="Optional for future 'production packaging' mode. Example: C:\\Users\\...\\Workspace\\PGS-Igaming",
     )
+
+    ig_resolved = _resolve_igaming_root(st.session_state.get("igaming_root_override", ""))
+    if ig_resolved and Path(ig_resolved).exists():
+        st.caption(f"PGS-Igaming root resolved: {ig_resolved}")
 
     core_root = _resolve_core_root(st.session_state["core_root_override"])
     ok, msg = core_health_report(core_root)
@@ -186,6 +228,21 @@ def _step_math_layout() -> None:
         st.number_input("Max win multiplier", min_value=10, max_value=100000, value=5000, step=10, key="max_win_multiplier")
 
     st.text_input("Bet levels (comma-separated)", "1,2,5,10,20", key="bet_levels_txt")
+
+    try:
+        bet_levels = _parse_csv_floats(st.session_state.get("bet_levels_txt", ""))
+        denom = float(st.session_state.get("denomination", 0.01))
+        cpl = int(st.session_state.get("coins_per_line", 1))
+        paylines = int(st.session_state.get("payline_count", 25))
+        base_bet = denom * cpl * max(1, paylines)
+        st.caption(
+            f"Current math selection → Reels: {int(st.session_state.get('reel_count', 5))}, "
+            f"Rows: {int(st.session_state.get('row_count', 3))}, "
+            f"Paylines: {paylines}, Bet levels: {bet_levels}, "
+            f"Base total bet (x1): {base_bet:.4f}"
+        )
+    except Exception:
+        st.warning("Bet levels must be comma-separated numbers (example: 1,2,5,10).")
 
 
 def _step_symbols() -> None:
@@ -245,9 +302,28 @@ def _step_assets() -> None:
     st.caption("Background + per-event audio. If you don't upload, defaults are silent/flat.")
     st.file_uploader("Background image (optional)", type=["png","jpg","jpeg","webp"], key="bg_upload")
 
+    bg = st.session_state.get("bg_upload")
+    if bg is not None:
+        st.session_state["bg_upload_name"] = str(getattr(bg, "name", "background.png"))
+        st.session_state["bg_upload_bytes"] = bytes(bg.getvalue())
+    bg_name = st.session_state.get("bg_upload_name")
+    bg_bytes = st.session_state.get("bg_upload_bytes")
+    if bg_name and bg_bytes:
+        st.success(f"Background selected: {bg_name}")
+        st.image(bg_bytes, caption=f"Selected background preview: {bg_name}", use_container_width=True)
+
     st.markdown("### Audio per event (optional)")
     for k, label in AUDIO_KEYS:
         st.file_uploader(label, type=["mp3","wav","ogg"], key=f"aud_{k}")
+        aud = st.session_state.get(f"aud_{k}")
+        if aud is not None:
+            st.session_state[f"aud_{k}_name"] = str(getattr(aud, "name", f"{k}.mp3"))
+            st.session_state[f"aud_{k}_bytes"] = bytes(aud.getvalue())
+        aud_name = st.session_state.get(f"aud_{k}_name")
+        aud_bytes = st.session_state.get(f"aud_{k}_bytes")
+        if aud_name and aud_bytes:
+            st.caption(f"{label}: {aud_name}")
+            st.audio(aud_bytes)
 
     st.markdown("### Extra UI images (optional)")
     st.file_uploader("UI images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, key="ui_uploads")
@@ -266,6 +342,7 @@ def _step_localization() -> None:
 
 def _step_math_pool() -> None:
     st.info("Optional: generate a math pool zip and embed it into the runnable build at res/conf/math_pool.zip.")
+    st.caption("Tip: math-pool settings are separate. Use the sync toggle below if you want these values to also update Build settings.")
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -283,6 +360,13 @@ def _step_math_pool() -> None:
     st.number_input("Denom", min_value=0.0001, value=float(st.session_state.get("denomination",0.01)), step=0.0001, format="%.4f", key="mp_denom")
     st.number_input("Coins per line", min_value=1, value=int(st.session_state.get("coins_per_line",1)), step=1, key="mp_coins_per_line")
     st.number_input("Payline count", min_value=1, value=int(st.session_state.get("payline_count",25)), step=1, key="mp_payline_count")
+    st.checkbox("Sync these Bet/Denom/Coins/Paylines values to Build settings", value=True, key="mp_sync_to_build")
+
+    if st.session_state.get("mp_sync_to_build", True):
+        st.session_state["bet_levels_txt"] = str(st.session_state.get("mp_bet_levels", st.session_state.get("bet_levels_txt", "1")))
+        st.session_state["denomination"] = float(st.session_state.get("mp_denom", st.session_state.get("denomination", 0.01)))
+        st.session_state["coins_per_line"] = int(st.session_state.get("mp_coins_per_line", st.session_state.get("coins_per_line", 1)))
+        st.session_state["payline_count"] = int(st.session_state.get("mp_payline_count", st.session_state.get("payline_count", 25)))
 
     st.markdown("### Targets")
     t1, t2, t3, t4 = st.columns(4)
@@ -350,6 +434,179 @@ def _step_math_pool() -> None:
     if mp:
         st.download_button("Download math pool ZIP", data=mp, file_name=f'{st.session_state.get("game_id","game")}_math_pool.zip', mime="application/zip")
 
+
+
+
+def _step_pgs_package() -> None:
+    st.markdown("### PGS-Igaming single-game packaging")
+    st.caption("Build a complete package using required PGS-Igaming folders and preserve relative paths.")
+
+    ig_root = str(st.session_state.get("igaming_root_override", "")).strip()
+    gid = str(st.session_state.get("game_id", "")).strip() or "9452"
+    st.text_input("Package game ID", value=gid, key="pgs_package_game_id")
+
+    expected = [
+        f"assets/gameAssets/games/{st.session_state.get('pgs_package_game_id', gid)}",
+        f"assets/gameAssets/games/{st.session_state.get('pgs_package_game_id', gid)}_splash",
+        "assets/resources/common",
+        "assets/scripts/core/components",
+        "assets/scripts/core/constants",
+        "assets/scripts/core/msg",
+        "assets/scripts/core/parser",
+        "assets/scripts/core/scenes",
+        "assets/scripts/core/ui",
+        "assets/scripts/util",
+    ]
+    st.code("\n".join(expected), language="text")
+
+    if not ig_root:
+        st.warning("Set PGS-Igaming root in Step 1 before generating this package.")
+        return
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Generate PGS Base Package ZIP"):
+            try:
+                data, warnings = build_pgs_game_package_zip(
+                    igaming_root=Path(ig_root),
+                    game_id=str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid,
+                )
+            except Exception as e:
+                st.exception(e)
+                return
+
+            for w in warnings:
+                st.warning(w)
+
+            gid_out = str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid
+            st.download_button(
+                "Download PGS Base Package ZIP",
+                data=data,
+                file_name=f"pgs_game_{gid_out}_base_package.zip",
+                mime="application/zip",
+            )
+            st.success("Done. Base package generated with required game, common resources, and shared core scripts.")
+
+    with c2:
+        st.caption("Configurable package injects selected symbols/audio/background and generated math into canonical game paths.")
+        if st.button("Generate PGS Configurable Package ZIP"):
+            gid_out = str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid
+            symbols_raw = json.loads(st.session_state.get("symbols_json", "[]"))
+            paytable = json.loads(st.session_state.get("paytable_json", "{}"))
+            reel_count = int(st.session_state.get("reel_count", 5))
+            row_count = int(st.session_state.get("row_count", 3))
+            payline_count = int(st.session_state.get("payline_count", 25))
+            paylines = generate_paylines(payline_count, reel_count, row_count)
+            ids = [str(s.get("id", "")).strip() for s in symbols_raw if str(s.get("id", "")).strip()] or ["A", "K", "Q", "J", "10", "9", "WILD", "SCAT"]
+            strip = []
+            for _ in range(5):
+                strip.extend(ids)
+            reel_strips = [strip[:] for _ in range(reel_count)]
+
+            # uploads from session state (same logic as Build step)
+            symbol_uploads_named = st.session_state.get("symbol_uploads_named", []) or []
+            background_upload = None
+            if st.session_state.get("bg_upload_name") and st.session_state.get("bg_upload_bytes"):
+                background_upload = (
+                    _MemoryUpload(name=str(st.session_state["bg_upload_name"]), data=bytes(st.session_state["bg_upload_bytes"])),
+                    str(st.session_state["bg_upload_name"]),
+                )
+
+            audio_named = []
+            for k, _label in AUDIO_KEYS:
+                b = st.session_state.get(f"aud_{k}_bytes")
+                n = st.session_state.get(f"aud_{k}_name")
+                if b and n:
+                    ext = Path(str(n)).suffix or ".mp3"
+                    audio_named.append((_MemoryUpload(name=str(n), data=bytes(b)), f"{k}{ext}"))
+
+            try:
+                data, warnings = build_pgs_configurable_package_zip(
+                    igaming_root=Path(ig_root),
+                    game_id=gid_out,
+                    spec_identity={
+                        "game_id": str(st.session_state.get("game_id", gid_out)).strip() or gid_out,
+                        "internal_name": str(st.session_state.get("internal_name_widget", "")).strip() or safe_internal_name(str(st.session_state.get("display_name", "Slot"))),
+                        "display_name": str(st.session_state.get("display_name", "Slot")).strip() or "Slot",
+                        "version": str(st.session_state.get("version", "0.1.0")).strip() or "0.1.0",
+                    },
+                    math_config={
+                        "reel_count": reel_count,
+                        "row_count": row_count,
+                        "payline_count": payline_count,
+                        "denomination": float(st.session_state.get("denomination", 0.01)),
+                        "coins_per_line": int(st.session_state.get("coins_per_line", 1)),
+                        "bet_levels": _parse_csv_floats(st.session_state.get("bet_levels_txt", "1,2,5,10,20")),
+                        "max_win_multiplier": int(st.session_state.get("max_win_multiplier", 5000)),
+                        "free_spins_award": st.session_state.get("fs_award", {3: 8, 4: 12, 5: 20}),
+                        "free_spins_multiplier": int(st.session_state.get("fs_mult", 1)),
+                        "autoplay_enabled": bool(st.session_state.get("autoplay_enabled", True)),
+                    },
+                    paylines=paylines,
+                    paytable=paytable,
+                    reel_strips=reel_strips,
+                    symbol_uploads_named=symbol_uploads_named,
+                    audio_uploads_named=audio_named,
+                    background_upload=background_upload,
+                    math_pool_zip=st.session_state.get("math_pool_zip"),
+                )
+            except Exception as e:
+                st.exception(e)
+                return
+
+            for w in warnings:
+                st.warning(w)
+
+            st.download_button(
+                "Download PGS Configurable Package ZIP",
+                data=data,
+                file_name=f"pgs_game_{gid_out}_configurable_package.zip",
+                mime="application/zip",
+            )
+            st.success("Done. Configurable package generated with base engine elements + user-selected symbols/audio/math payload.")
+
+
+
+def _step_llm_review() -> None:
+    st.markdown("### Export package for LLM code review")
+    st.caption("Creates a ZIP with key source files + a ready-to-use review prompt.")
+
+    default_files = [
+        "ui_game_generator.py",
+        "dev_builder.py",
+        "math_pool_engine.py",
+        "pgs_packager.py",
+        "cocos_creator_builder.py",
+        "core_paths.py",
+        "spec.py",
+        "README_RUN.txt",
+        "LOCATE_COMMON_ELEMENTS.md",
+    ]
+    st.text_area(
+        "Files to include (one per line)",
+        value="\n".join(default_files),
+        height=220,
+        key="llm_review_files_txt",
+    )
+
+    if st.button("Generate LLM Review Bundle ZIP"):
+        selected = [x.strip() for x in str(st.session_state.get("llm_review_files_txt", "")).splitlines() if x.strip()]
+        try:
+            data, warnings = build_llm_review_bundle_zip(repo_root=Path(__file__).resolve().parent, selected_rel_paths=selected)
+        except Exception as e:
+            st.exception(e)
+            return
+
+        for w in warnings:
+            st.warning(w)
+
+        st.download_button(
+            "Download LLM Review Bundle ZIP",
+            data=data,
+            file_name="llm_code_review_bundle.zip",
+            mime="application/zip",
+        )
+        st.success("Done. Upload this ZIP to your LLM and use LLM_REVIEW_PROMPT.md as the review prompt.")
 
 def _step_build() -> None:
     core_root = _resolve_core_root(st.session_state.get("core_root_override",""))
@@ -427,17 +684,39 @@ def _step_build() -> None:
     symbol_uploads_named = st.session_state.get("symbol_uploads_named", [])
     ui_uploads = st.session_state.get("ui_uploads") or []
     background_upload = st.session_state.get("bg_upload")
+    # Prefer persisted bytes from Assets step (stable across reruns/navigation)
+    if st.session_state.get("bg_upload_name") and st.session_state.get("bg_upload_bytes"):
+        background_upload = _MemoryUpload(
+            name=str(st.session_state["bg_upload_name"]),
+            data=bytes(st.session_state["bg_upload_bytes"]),
+        )
 
     # audio mapping (named)
     audio_named: List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]] = []
     for k, _label in AUDIO_KEYS:
-        f = st.session_state.get(f"aud_{k}")
-        if f is None:
+        # Prefer persisted bytes (stable); fallback to current widget object.
+        b = st.session_state.get(f"aud_{k}_bytes")
+        n = st.session_state.get(f"aud_{k}_name")
+        if b and n:
+            ext = Path(str(n)).suffix or ".mp3"
+            audio_named.append((_MemoryUpload(name=str(n), data=bytes(b)), f"{k}{ext}"))
             continue
-        ext = Path(f.name).suffix or ".mp3"
-        audio_named.append((f, f"{k}{ext}"))
+
+        f = st.session_state.get(f"aud_{k}")
+        if f is not None:
+            ext = Path(f.name).suffix or ".mp3"
+            audio_named.append((f, f"{k}{ext}"))
 
     math_pool_zip = st.session_state.get("math_pool_zip")
+
+    dashboard_assets_root = None
+    dashboard_assets_required = False
+    ig_root_path = _resolve_igaming_root(str(st.session_state.get("igaming_root_override", "")))
+    if ig_root_path:
+        cand = Path(ig_root_path) / "assets" / "resources" / "common" / "assets" / "default_ui" / "dashboard"
+        if cand.exists():
+            dashboard_assets_root = cand
+            dashboard_assets_required = True
 
     st.markdown("### Build outputs")
     st.caption(
@@ -461,6 +740,8 @@ def _step_build() -> None:
                     background_upload=background_upload,
                     audio_uploads_named=audio_named or None,
                     math_pool_zip=math_pool_zip,
+                    dashboard_assets_root=dashboard_assets_root,
+                    dashboard_assets_required=dashboard_assets_required,
                 )
             except Exception as e:
                 st.exception(e)

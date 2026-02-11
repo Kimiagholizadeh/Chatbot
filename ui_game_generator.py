@@ -10,6 +10,7 @@ from .core_paths import core_health_report, get_core_root
 from .dev_builder import build_dev_web_zip
 from .cocos_creator_builder import build_cocos_creator_web_zip
 from .math_pool_engine import PoolConfig, export_math_pool_zip
+from .pgs_packager import build_pgs_game_package_zip
 from .paylines import generate_paylines
 from .spec import (
     FeatureConfig,
@@ -130,6 +131,7 @@ def show_game_generator() -> None:
         ("Assets (BG + Audio)", _step_assets),
         ("Localization", _step_localization),
         ("Math Pool (optional)", _step_math_pool),
+        ("PGS Package (9452)", _step_pgs_package),
         ("Build", _step_build),
     ]
 
@@ -406,6 +408,56 @@ def _step_math_pool() -> None:
     if mp:
         st.download_button("Download math pool ZIP", data=mp, file_name=f'{st.session_state.get("game_id","game")}_math_pool.zip', mime="application/zip")
 
+
+
+
+def _step_pgs_package() -> None:
+    st.markdown("### PGS-Igaming single-game packaging")
+    st.caption("Build a complete package using required PGS-Igaming folders and preserve relative paths.")
+
+    ig_root = str(st.session_state.get("igaming_root_override", "")).strip()
+    gid = str(st.session_state.get("game_id", "")).strip() or "9452"
+    st.text_input("Package game ID", value=gid, key="pgs_package_game_id")
+
+    expected = [
+        f"assets/gameAssets/games/{st.session_state.get('pgs_package_game_id', gid)}",
+        f"assets/gameAssets/games/{st.session_state.get('pgs_package_game_id', gid)}_splash",
+        "assets/resources/common",
+        "assets/scripts/core/components",
+        "assets/scripts/core/constants",
+        "assets/scripts/core/msg",
+        "assets/scripts/core/parser",
+        "assets/scripts/core/scenes",
+        "assets/scripts/core/ui",
+        "assets/scripts/util",
+    ]
+    st.code("\n".join(expected), language="text")
+
+    if not ig_root:
+        st.warning("Set PGS-Igaming root in Step 1 before generating this package.")
+        return
+
+    if st.button("Generate PGS Game Package ZIP"):
+        try:
+            data, warnings = build_pgs_game_package_zip(
+                igaming_root=Path(ig_root),
+                game_id=str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid,
+            )
+        except Exception as e:
+            st.exception(e)
+            return
+
+        for w in warnings:
+            st.warning(w)
+
+        gid_out = str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid
+        st.download_button(
+            "Download PGS Package ZIP",
+            data=data,
+            file_name=f"pgs_game_{gid_out}_package.zip",
+            mime="application/zip",
+        )
+        st.success("Done. Package generated with required game, common resources, and shared core scripts.")
 
 def _step_build() -> None:
     core_root = _resolve_core_root(st.session_state.get("core_root_override",""))

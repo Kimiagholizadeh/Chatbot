@@ -1959,42 +1959,57 @@ def build_dev_web_zip(
         # UI images
         ui_files = copy_uploaded_files(ui_uploads or [], web / "res" / "assets" / "ui")
 
-        # Optional: auto-import shared dashboard PNGs from local PGS-Igaming root.
+        # Optional: auto-import shared dashboard UI files from local PGS-Igaming root.
         copied_dashboard_count = 0
         if dashboard_assets_root:
             dash_root = Path(dashboard_assets_root)
             buttons_dir = dash_root / "buttons"
-            wanted = [
-                "bet_popup_panel.png", "popup_panel_bg.png",
-                "btn_spin.png", "btn_spin_on.png", "btn_spin_off.png",
-                "btn_stop.png", "btn_stop_on.png", "btn_stop_off.png",
-                "btn_bet.png", "btn_bet_on.png", "btn_bet_off.png",
-                "btn_bet_plus.png", "btn_bet_plus_on.png", "btn_bet_plus_off.png",
-                "btn_bet_minus.png", "btn_bet_minus_on.png", "btn_bet_minus_off.png",
-                "btn_bet_max.png",
-                "btn_auto.png", "btn_auto_on.png", "btn_auto_off.png",
-                "btn_auto_active.png",
-                "btn_auto_spin.png", "btn_auto_spin_on.png", "btn_auto_spin_off.png",
-                "btn_auto_amt.png", "btn_auto_amt_on.png",
-                "btn_menu_close.png", "btn_menu_close_on.png", "btn_menu_close_off.png",
-                "btn_close_on_menu.png",
-                "btn_quick_on.png", "btn_quick_off.png",
-                "btn_turbo.png", "btn_turbo_off.png",
-                "btn_speed_quick.png", "btn_speed_quick_on.png",
-                "btn_speed_turbo.png", "btn_speed_turbo_on.png",
+            wanted_stems = [
+                "bet_popup_panel", "popup_panel_bg",
+                "btn_spin", "btn_spin_on", "btn_spin_off",
+                "btn_stop", "btn_stop_on", "btn_stop_off",
+                "btn_bet", "btn_bet_on", "btn_bet_off",
+                "btn_bet_plus", "btn_bet_plus_on", "btn_bet_plus_off",
+                "btn_bet_minus", "btn_bet_minus_on", "btn_bet_minus_off",
+                "btn_bet_max",
+                "btn_auto", "btn_auto_on", "btn_auto_off",
+                "btn_auto_active",
+                "btn_auto_spin", "btn_auto_spin_on", "btn_auto_spin_off",
+                "btn_auto_amt", "btn_auto_amt_on",
+                "btn_menu_close", "btn_menu_close_on", "btn_menu_close_off",
+                "btn_close_on_menu",
+                "btn_back", "btn_back_on",
+                "btn_quick_on", "btn_quick_off",
+                "btn_turbo", "btn_turbo_off",
+                "btn_speed_quick", "btn_speed_quick_on",
+                "btn_speed_turbo", "btn_speed_turbo_on",
             ]
+            allowed_ext = {".png", ".webp", ".jpg", ".jpeg"}
+
+            candidates: Dict[str, Path] = {}
+            for src_dir in [buttons_dir, dash_root]:
+                if not src_dir.exists() or not src_dir.is_dir():
+                    continue
+                for f in src_dir.iterdir():
+                    if not f.is_file():
+                        continue
+                    ext = f.suffix.lower()
+                    if ext not in allowed_ext:
+                        continue
+                    candidates.setdefault(f.stem.lower(), f)
+
             ensure_dir(web / "res" / "assets" / "ui")
             existing = set(ui_files)
-            for name in wanted:
-                src = (buttons_dir / name)
-                if not src.exists():
-                    src = dash_root / name
-                if src.exists() and src.is_file():
-                    dst = web / "res" / "assets" / "ui" / name
+            for stem in wanted_stems:
+                src = candidates.get(stem)
+                if src:
+                    # Normalize output names to lowercase .png so runtime stem lookup is stable.
+                    dst_name = f"{stem}.png"
+                    dst = web / "res" / "assets" / "ui" / dst_name
                     copy_file(src, dst)
-                    if name not in existing:
-                        ui_files.append(name)
-                        existing.add(name)
+                    if dst_name not in existing:
+                        ui_files.append(dst_name)
+                        existing.add(dst_name)
                     copied_dashboard_count += 1
 
             if dashboard_assets_required and copied_dashboard_count == 0:

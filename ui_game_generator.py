@@ -713,10 +713,20 @@ def _step_build() -> None:
     dashboard_assets_required = False
     ig_root_path = _resolve_igaming_root(str(st.session_state.get("igaming_root_override", "")))
     if ig_root_path:
-        cand = Path(ig_root_path) / "assets" / "resources" / "common" / "assets" / "default_ui" / "dashboard"
-        if cand.exists():
-            dashboard_assets_root = cand
-            dashboard_assets_required = True
+        src = Path(ig_root_path)
+        candidates = [
+            # Normal input: PGS-Igaming repo root.
+            src / "assets" / "resources" / "common" / "assets" / "default_ui" / "dashboard",
+            # Allow users to paste the dashboard folder directly.
+            src,
+            # Allow users to paste the dashboard/buttons folder directly.
+            src.parent if src.name.lower() == "buttons" else None,
+        ]
+        for cand in candidates:
+            if cand and cand.exists() and cand.is_dir() and (cand.name.lower() == "dashboard"):
+                dashboard_assets_root = cand
+                dashboard_assets_required = True
+                break
 
     st.markdown("### Build outputs")
     st.caption(

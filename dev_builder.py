@@ -994,8 +994,8 @@ var SlotScene = cc.Scene.extend({
         holder.setPosition(x,y);
         this.gridLayer.addChild(holder, 5);
 
-        // Soft frame only
-        var frame = new cc.LayerColor(cc.color(18,26,48,30), frameW, frameH);
+        // Keep slots fully transparent so selected background is clean (no matrix overlay).
+        var frame = new cc.LayerColor(cc.color(18,26,48,0), frameW, frameH);
         if (frame.setIgnoreAnchorPointForPosition) frame.setIgnoreAnchorPointForPosition(false);
         frame.setPosition(-frameW/2, -frameH/2);
         holder.addChild(frame, 1);
@@ -1238,7 +1238,7 @@ var SlotScene = cc.Scene.extend({
 
     var cellH = this._cellH || 90;
     var baseSpeed = 620;       // fast spin
-    var landWindow = 0.55;     // last part slows & locks to finalGrid
+    var landWindow = 0.90;     // longer easing window for softer stops
     var clipTop = (rows - 1) * cellH + cellH * 0.55;
     var clipBot = -cellH * 0.55;
 
@@ -1284,7 +1284,11 @@ var SlotScene = cc.Scene.extend({
         allStopped = false;
 
         var inLanding = (timeLeft <= landWindow);
-        var speed = inLanding ? baseSpeed * 0.30 : baseSpeed;
+        var speed = baseSpeed;
+        if (inLanding) {
+          var t = Math.max(0, Math.min(1, timeLeft / landWindow)); // 1 -> start of landing, 0 -> final stop
+          speed = baseSpeed * (0.14 + 0.86 * t * t * t);           // ease-out cubic
+        }
 
         self._spinOffsets[c] += speed * dt;
 
@@ -1317,13 +1321,16 @@ var SlotScene = cc.Scene.extend({
           self._setSpriteSymbol(strip2.sprites[0], finalGrid[0][c]);
           self._setSpriteSymbol(strip2.sprites[rows + 1], finalGrid[rows - 1][c]);
 
-          // As we get very close, snap to perfect alignment
-          if (timeLeft <= 0.18) {
-            self._spinOffsets[c] = 0;
+          // As we get very close, gently settle into perfect alignment
+          if (timeLeft <= 0.16) {
+            self._spinOffsets[c] = self._spinOffsets[c] * 0.60;
+            if (self._spinOffsets[c] < 0.75) self._spinOffsets[c] = 0;
             layoutReel(c);
-            self._spinLocked[c] = true;
-            try { if (!self._muted) Audio.play("reel_stop"); } catch(e){}
-            continue;
+            if (self._spinOffsets[c] === 0) {
+              self._spinLocked[c] = true;
+              try { if (!self._muted) Audio.play("reel_stop"); } catch(e){}
+              continue;
+            }
           }
         }
 

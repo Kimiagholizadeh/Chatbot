@@ -38,7 +38,7 @@ _INDEX_HTML = r"""<!doctype html>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-  <title>Slot Maker Demo</title>
+  <title>__GAME_TITLE__</title>
   <style>
     html, body { margin:0; padding:0; width:100%; height:100%; background:#0b1020; overflow:hidden; }
     #gameCanvas { width:100vw; height:100vh; display:block; margin:0 auto; background:#0b1020; }
@@ -185,6 +185,7 @@ _ENGINE_RNG = """var RNG = {
 _ENGINE_AUDIO = """var Audio = {
   map: {},
   _unlocked: false,
+  _activeWinId: null,
 
   setMap: function(m){ this.map = m || {}; },
 
@@ -226,6 +227,12 @@ _ENGINE_AUDIO = """var Audio = {
     return null;
   },
 
+  stopWin: function(){
+    if (this._activeWinId === null || this._activeWinId === undefined) return;
+    try { cc.audioEngine.stopEffect(this._activeWinId); } catch (e) {}
+    this._activeWinId = null;
+  },
+
   play: function(k){
     if (!this._unlocked) {
       try { this.unlock(); } catch (e0) {}
@@ -235,10 +242,16 @@ _ENGINE_AUDIO = """var Audio = {
     var cands = this._resolveMany(f);
     if (!cands.length) return;
 
+    var kk = String(k || "").toLowerCase();
+    var isWinCue = (kk === "win" || kk === "bigwin");
+
     for (var i=0;i<cands.length;i++){
       try {
         var id = cc.audioEngine.playEffect(cands[i], false);
-        if (id !== undefined && id !== null && id !== -1) return;
+        if (id !== undefined && id !== null && id !== -1) {
+          if (isWinCue) this._activeWinId = id;
+          return;
+        }
       } catch (e) {}
     }
   }
@@ -638,7 +651,10 @@ var SlotScene = cc.Scene.extend({
     this._bgNode = new cc.LayerColor(cc.color(11,16,32,255), 960, 540);
     this.addChild(this._bgNode, 0);
 
-    var title = new cc.LabelTTF("Slot Maker Engine", "Arial", 22);
+    var gameTitle = (SlotModel.cfg && SlotModel.cfg.identity && SlotModel.cfg.identity.display_name)
+      ? SlotModel.cfg.identity.display_name
+      : "Slot Maker Engine";
+    var title = new cc.LabelTTF(gameTitle, "Arial", 22);
     title.setPosition(480, 520);
     this.addChild(title, 1);
 
@@ -1152,12 +1168,30 @@ var SlotScene = cc.Scene.extend({
     return out.length ? out.join("\n") : I18N.t("no_line_wins", "No line wins");
   },
 
+  _showFreeSpinIntro: function(done){
+    var banner = new cc.LabelTTF("FREE SPINS BONUS!", "Arial", 44);
+    banner.setPosition(480, 300);
+    banner.setColor(cc.color(255, 215, 0));
+    banner.setOpacity(0);
+    this.uiLayer.addChild(banner, 1200);
+
+    var fadeIn = cc.fadeIn(0.18);
+    var hold = cc.delayTime(0.65);
+    var pulse = cc.sequence(cc.scaleTo(0.20, 1.08), cc.scaleTo(0.16, 1.0));
+    var fadeOut = cc.fadeOut(0.25);
+    var remove = cc.callFunc(function(){ banner.removeFromParent(true); if (done) done(); });
+    banner.runAction(cc.sequence(fadeIn, cc.spawn(hold, pulse), fadeOut, remove));
+  },
+
   _onSpin: function(){
     var self = this;
     if (this.busy) return;
 
     this.lineDraw.clear();
     this._setMessage("");
+
+    // Stop previous long win cue as soon as player starts the next spin.
+    try { Audio.stopWin(); } catch (e1) {}
 
     var res = SlotModel.spin();
     if (res.error) {
@@ -1212,8 +1246,14 @@ var SlotScene = cc.Scene.extend({
           if (!(SlotModel.state && SlotModel.state.inFreeSpins && SlotModel.state.freeSpins > 0)) return;
           self._onSpin();
         };
-        if (typeof self.scheduleOnce === "function") self.scheduleOnce(autoNext, 0.35);
-        else setTimeout(autoNext, 350);
+
+        var queueAutoSpin = function(delaySec){
+          if (typeof self.scheduleOnce === "function") self.scheduleOnce(autoNext, delaySec);
+          else setTimeout(autoNext, Math.floor(delaySec * 1000));
+        };
+
+        if (fsStarted) self._showFreeSpinIntro(function(){ queueAutoSpin(0.20); });
+        else queueAutoSpin(0.35);
       }
     });
   },
@@ -1302,7 +1342,10 @@ var SlotScene = cc.Scene.extend({
         var tStop = self._spinStopTimes[c];
         var timeLeft = tStop - self._spinElapsed;
         if (timeLeft <= 0) {
+          self._spinOffsets[c] = 0;
+          layoutReel(c);
           self._spinLocked[c] = true;
+          try { if (!self._muted) Audio.play("reel_stop"); } catch(eStop){}
           continue;
         }
         allStopped = false;
@@ -1500,7 +1543,7 @@ def build_dev_web_zip(
             "main.js",
         ]
 
-        write_text(web / "index.html", _INDEX_HTML.replace("__JS_LIST__", json.dumps(js_list)))
+        write_text(web / "index.html", _INDEX_HTML.replace("__JS_LIST__", json.dumps(js_list)).replace("__GAME_TITLE__", spec.identity.display_name))
         write_text(web / "src" / "compat.js", COMPAT_JS)
         write_text(web / "main.js", _MAIN_JS)
         write_text(web / "run_local.py", _RUN_LOCAL_PY)

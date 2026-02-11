@@ -1,50 +1,119 @@
-# UI Control Implementation Map (Spin/Stop, Bet Popup, Auto Popup)
+# UI Control Implementation Map (PNG + Location + Action)
 
-This map links the requested shared controls to the generated game runtime implementation.
+Runtime source: `dev_builder.py` (`_SCENE_SLOT` string)
 
-## Runtime file
-- `dev_builder.py` embeds generated scene logic in `_SCENE_SLOT`.
+## 1) Control locations used in generated runtime (960x540 canvas)
 
-## Implemented controls and actions
+- `spinButtonsPanel`: `(840, 100)`
+  - `spinBtn`: local `(0,0)`
+  - `stopBtn`: local `(0,0)`
+- `autoButton`: `(760, 52)`
+- `autoStopButton`: `(760, 20)`
+- `betPanelButton`: `(930, 52)`
+- `maxBetButton`: `(930, 20)`
+- `betInfoPanel` root: `(480, 250)`
+- `autoPanelInfo` root: `(480, 250)`
+
+### Bet popup child local positions
+- `betPanelCloseButton`: `(300, 95)`
+- `betPanel_incBet`: `(210, -5)`
+- `betPanel_decBet`: `(-210, -5)`
+- `betPanelMaxBtn`: `(0, -78)`
+
+### Auto popup child local positions
+- `autoPanelCloseButton`: `(340, 126)`
+- `20/50/100/200/500/1000` buttons: grid positions from `(-240..240, 35/-25)`
+- `btnTurboSpin`: `(-120, -88)`
+- `btnQuickSpin`: `(120, -88)`
+- `btnAutoSpin`: `(0, -138)`
+
+---
+
+## 2) Exact PNG mapping per button (runtime image states)
+
+Resolved from `assets_manifest.ui_by_stem` (uploaded UI files by filename stem).
 
 ### Spin / Stop
-- `spinButtonsPanel` (runtime anchor in generated scene)
-- `spinBtn` -> starts spin (`_onSpin`)
-- `stopBtn` -> stop request during spin (`onStopButtonClick`)
-- During spin, UI toggles from SPIN to STOP via `_setSpinButtonsState(true)`.
+- `spinBtn`
+  - normal: `btn_spin`
+  - pressed: `btn_spin_on`
+  - disabled: `btn_spin_off`
+- `stopBtn`
+  - normal/pressed: `btn_stop_on` (fallback `btn_stop`)
+  - disabled: `btn_stop_off`
 
 ### Bet controls
-- `betPanelButton` -> open bet popup (`onOpenBetPanelClick`)
-- Bet popup root: `betInfoPanel`
-- `betPanel_decBet` -> decrease bet (`onDecreaseBetClick`)
-- `betPanel_incBet` -> increase bet (`onIncreaseBetClick`)
-- `betPanelMaxBtn` / `maxBetButton` -> max bet (`onSetMaxBetClick`)
-- `betPanelCloseButton` -> close popup (`onCloseBetPanelClick`)
-- Visibility logic for +/-/max states: `_updateBetBtnVisibility`
+- `betPanelButton`
+  - normal: `btn_bet`
+  - pressed: `btn_bet_on`
+  - disabled: `btn_bet_off`
+- `betPanel_incBet`
+  - normal: `btn_bet_plus`
+  - pressed: `btn_bet_plus_on`
+  - disabled: `btn_bet_plus_off`
+- `betPanel_decBet`
+  - normal: `btn_bet_minus`
+  - pressed: `btn_bet_minus_on`
+  - disabled: `btn_bet_minus_off`
+- `betPanelMaxBtn` + `maxBetButton`
+  - normal: `btn_auto_amt` (fallback `btn_bet_max`)
+  - pressed: `btn_auto_amt_on`
+- `betPanelCloseButton`
+  - normal: `btn_menu_close`
+  - pressed: `btn_close_on_menu` (fallback `btn_menu_close_on`)
+  - disabled: `btn_menu_close_off`
 
 ### Auto controls
-- `autoButton` -> open auto popup (`onOpenAutoPanelClick`)
-- Auto popup root: `autoPanelInfo`
-- Count buttons: `20/50/100/200/500/1000` -> `enableAutoSpin`
-- `btnAutoSpin` -> starts autoplay sequence (`onAutoButtonClick`)
-- `autoStopButton` -> stops autoplay (`onStopAutoButtonClick`)
-- `btnQuickSpin` -> quick mode (`onQuickSpinButtonClick`)
-- `btnTurboSpin` -> turbo mode (`onTurboSpinButtonClick`)
-- `autoPanelCloseButton` -> close auto popup (`onCloseAutoPanelClick`)
+- `autoButton`
+  - normal: `btn_auto`
+  - pressed: `btn_auto_on`
+  - disabled: `btn_auto_off`
+- `autoStopButton`
+  - normal/pressed: `btn_auto_active`
+- `btnAutoSpin`
+  - normal: `btn_auto_spin`
+  - pressed: `btn_auto_spin_on`
+  - disabled: `btn_auto_spin_off`
+- `btnQuickSpin`
+  - normal: `btn_quick_off`
+  - selected/pressed: `btn_quick_on`
+- `btnTurboSpin`
+  - normal: `btn_turbo_off`
+  - selected/pressed: `btn_turbo`
+- autoplay count buttons (`20/50/100/200/500/1000`)
+  - normal: `btn_auto_amt`
+  - selected/pressed: `btn_auto_amt_on`
+- `autoPanelCloseButton`
+  - normal: `btn_menu_close`
+  - pressed: `btn_menu_close_on`
+  - disabled: `btn_menu_close_off`
 
-## Stop-spin behavior
-- Stop button sets `_forceStopRequested = true`.
-- Reel animation loop shortens stop timers when forced stop is requested so reels settle early.
+---
 
-## Search commands
-```bash
-rg -n "spinButtonsPanel|spinBtn|stopBtn|onStopButtonClick|_setSpinButtonsState" dev_builder.py
-rg -n "onOpenBetPanelClick|onCloseBetPanelClick|onIncreaseBetClick|onDecreaseBetClick|onSetMaxBetClick|betInfoPanel" dev_builder.py
-rg -n "onOpenAutoPanelClick|onCloseAutoPanelClick|enableAutoSpin|onAutoButtonClick|onStopAutoButtonClick|onQuickSpinButtonClick|onTurboSpinButtonClick|autoPanelInfo" dev_builder.py
-```
+## 3) Action handlers wired in runtime
 
+- Spin / Stop:
+  - `onSpinButtonClick` (internally uses `_onSpin`)
+  - `onStopButtonClick`
+- Bet popup:
+  - `onOpenBetPanelClick`
+  - `onCloseBetPanelClick`
+  - `onIncreaseBetClick`
+  - `onDecreaseBetClick`
+  - `onSetMaxBetClick`
+  - `_updateBetBtnVisibility`
+- Auto popup:
+  - `onOpenAutoPanelClick`
+  - `onCloseAutoPanelClick`
+  - `enableAutoSpin`
+  - `onAutoButtonClick`
+  - `onStopAutoButtonClick`
+  - `onQuickSpinButtonClick`
+  - `onTurboSpinButtonClick`
+  - `setSpinMode`
 
-## Button image binding
-- Runtime resolves button/panel textures from `assets_manifest.ui_by_stem` (generated from uploaded UI files).
-- Upload files using shared stems such as: `btn_spin`, `btn_stop`, `btn_bet`, `btn_bet_plus`, `btn_bet_minus`, `btn_bet_max`, `btn_auto`, `btn_auto_spin`, `btn_auto_amt`, `btn_speed_quick`, `btn_speed_turbo`, `btn_menu_close`, `bet_popup_panel`.
-- If an image stem is missing, runtime falls back to the default colored button style.
+---
+
+## 4) Note on required uploads
+
+To use PNG buttons exactly (instead of fallback colored buttons), upload UI images in the wizard with stems matching the names above (e.g. `btn_spin.png`, `btn_spin_on.png`, `btn_spin_off.png`, etc.).

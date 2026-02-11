@@ -1770,6 +1770,18 @@ def build_dev_web_zip(
     math_pool_zip: Optional[bytes] = None,
 ) -> bytes:
     """Build a runnable Cocos2d-HTML5 web build zip."""
+    required_core_files = [
+        core_root / "frameworks" / "cocos2d-html5" / "CCBoot.js",
+        core_root / "frameworks" / "cocos2d-html5" / "cocos2d" / "core" / "platform" / "CCClass.js",
+        core_root / "frameworks" / "cocos2d-html5" / "cocos2d" / "core" / "renderer" / "RendererWebGL.js",
+    ]
+    missing_core = [str(p) for p in required_core_files if not p.exists()]
+    if missing_core:
+        raise FileNotFoundError(
+            "PongGameCore is incomplete for HTML5 build. Missing required engine files:\n- " + "\n- ".join(missing_core) +
+            "\n\nPlease set a full PongGameCore root that contains frameworks/cocos2d-html5/cocos2d/core."
+        )
+
     tmp = Path(tempfile.mkdtemp(prefix="slotmaker_"))
     try:
         web = tmp / "web_build"

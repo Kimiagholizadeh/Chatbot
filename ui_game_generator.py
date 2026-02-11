@@ -10,7 +10,7 @@ from .core_paths import core_health_report, get_core_root
 from .dev_builder import build_dev_web_zip
 from .cocos_creator_builder import build_cocos_creator_web_zip
 from .math_pool_engine import PoolConfig, export_math_pool_zip
-from .pgs_packager import build_pgs_game_package_zip
+from .pgs_packager import build_pgs_configurable_package_zip, build_pgs_game_package_zip
 from .paylines import generate_paylines
 from .spec import (
     FeatureConfig,
@@ -437,27 +437,107 @@ def _step_pgs_package() -> None:
         st.warning("Set PGS-Igaming root in Step 1 before generating this package.")
         return
 
-    if st.button("Generate PGS Game Package ZIP"):
-        try:
-            data, warnings = build_pgs_game_package_zip(
-                igaming_root=Path(ig_root),
-                game_id=str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid,
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Generate PGS Base Package ZIP"):
+            try:
+                data, warnings = build_pgs_game_package_zip(
+                    igaming_root=Path(ig_root),
+                    game_id=str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid,
+                )
+            except Exception as e:
+                st.exception(e)
+                return
+
+            for w in warnings:
+                st.warning(w)
+
+            gid_out = str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid
+            st.download_button(
+                "Download PGS Base Package ZIP",
+                data=data,
+                file_name=f"pgs_game_{gid_out}_base_package.zip",
+                mime="application/zip",
             )
-        except Exception as e:
-            st.exception(e)
-            return
+            st.success("Done. Base package generated with required game, common resources, and shared core scripts.")
 
-        for w in warnings:
-            st.warning(w)
+    with c2:
+        st.caption("Configurable package injects selected symbols/audio/background and generated math into canonical game paths.")
+        if st.button("Generate PGS Configurable Package ZIP"):
+            gid_out = str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid
+            symbols_raw = json.loads(st.session_state.get("symbols_json", "[]"))
+            paytable = json.loads(st.session_state.get("paytable_json", "{}"))
+            reel_count = int(st.session_state.get("reel_count", 5))
+            row_count = int(st.session_state.get("row_count", 3))
+            payline_count = int(st.session_state.get("payline_count", 25))
+            paylines = generate_paylines(payline_count, reel_count, row_count)
+            ids = [str(s.get("id", "")).strip() for s in symbols_raw if str(s.get("id", "")).strip()] or ["A", "K", "Q", "J", "10", "9", "WILD", "SCAT"]
+            strip = []
+            for _ in range(5):
+                strip.extend(ids)
+            reel_strips = [strip[:] for _ in range(reel_count)]
 
-        gid_out = str(st.session_state.get("pgs_package_game_id", gid)).strip() or gid
-        st.download_button(
-            "Download PGS Package ZIP",
-            data=data,
-            file_name=f"pgs_game_{gid_out}_package.zip",
-            mime="application/zip",
-        )
-        st.success("Done. Package generated with required game, common resources, and shared core scripts.")
+            # uploads from session state (same logic as Build step)
+            symbol_uploads_named = st.session_state.get("symbol_uploads_named", []) or []
+            background_upload = None
+            if st.session_state.get("bg_upload_name") and st.session_state.get("bg_upload_bytes"):
+                background_upload = (
+                    _MemoryUpload(name=str(st.session_state["bg_upload_name"]), data=bytes(st.session_state["bg_upload_bytes"])),
+                    str(st.session_state["bg_upload_name"]),
+                )
+
+            audio_named = []
+            for k, _label in AUDIO_KEYS:
+                b = st.session_state.get(f"aud_{k}_bytes")
+                n = st.session_state.get(f"aud_{k}_name")
+                if b and n:
+                    ext = Path(str(n)).suffix or ".mp3"
+                    audio_named.append((_MemoryUpload(name=str(n), data=bytes(b)), f"{k}{ext}"))
+
+            try:
+                data, warnings = build_pgs_configurable_package_zip(
+                    igaming_root=Path(ig_root),
+                    game_id=gid_out,
+                    spec_identity={
+                        "game_id": str(st.session_state.get("game_id", gid_out)).strip() or gid_out,
+                        "internal_name": str(st.session_state.get("internal_name_widget", "")).strip() or safe_internal_name(str(st.session_state.get("display_name", "Slot"))),
+                        "display_name": str(st.session_state.get("display_name", "Slot")).strip() or "Slot",
+                        "version": str(st.session_state.get("version", "0.1.0")).strip() or "0.1.0",
+                    },
+                    math_config={
+                        "reel_count": reel_count,
+                        "row_count": row_count,
+                        "payline_count": payline_count,
+                        "denomination": float(st.session_state.get("denomination", 0.01)),
+                        "coins_per_line": int(st.session_state.get("coins_per_line", 1)),
+                        "bet_levels": _parse_csv_floats(st.session_state.get("bet_levels_txt", "1,2,5,10,20")),
+                        "max_win_multiplier": int(st.session_state.get("max_win_multiplier", 5000)),
+                        "free_spins_award": st.session_state.get("fs_award", {3: 8, 4: 12, 5: 20}),
+                        "free_spins_multiplier": int(st.session_state.get("fs_mult", 1)),
+                        "autoplay_enabled": bool(st.session_state.get("autoplay_enabled", True)),
+                    },
+                    paylines=paylines,
+                    paytable=paytable,
+                    reel_strips=reel_strips,
+                    symbol_uploads_named=symbol_uploads_named,
+                    audio_uploads_named=audio_named,
+                    background_upload=background_upload,
+                    math_pool_zip=st.session_state.get("math_pool_zip"),
+                )
+            except Exception as e:
+                st.exception(e)
+                return
+
+            for w in warnings:
+                st.warning(w)
+
+            st.download_button(
+                "Download PGS Configurable Package ZIP",
+                data=data,
+                file_name=f"pgs_game_{gid_out}_configurable_package.zip",
+                mime="application/zip",
+            )
+            st.success("Done. Configurable package generated with base engine elements + user-selected symbols/audio/math payload.")
 
 def _step_build() -> None:
     core_root = _resolve_core_root(st.session_state.get("core_root_override",""))

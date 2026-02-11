@@ -32,7 +32,9 @@ Notes
 
 - To build a **single PGS-Igaming game package** (for example game 9452):
   1) Set "PGS-Igaming root" in Step 1 of the wizard.
-  2) Open step "PGS Package (9452)" and click "Generate PGS Game Package ZIP".
-  3) The package includes required folders for the game, shared common assets, and core scripts while preserving paths.
-  4) The wizard warns if expected `.meta` pairs are missing.
+  2) Open step "PGS Package (9452)".
+  3) Use **Generate PGS Base Package ZIP** to export only required base folders.
+  4) Use **Generate PGS Configurable Package ZIP** to export base folders plus user-selected symbols/audio/background and generated math payload.
+  5) Configurable payload is written in canonical game locations under `assets/gameAssets/games/<id>/configs`, `sprites/generated_symbols`, and `sounds/generated_events`.
+  6) The wizard warns if expected `.meta` pairs are missing in the copied base source.
 

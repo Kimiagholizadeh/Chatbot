@@ -1173,8 +1173,20 @@ var SlotScene = cc.Scene.extend({
     this._startSpinAnimation(2.8, res.grid, function(){
       self._renderGrid(res.grid);
 
+      var fsStarted = (!res.inFreeSpins && res.freeSpinsRemaining > 0);
+      var fsEnded = (res.inFreeSpins && res.freeSpinsRemaining <= 0);
+
+      if (!self._muted && fsStarted) {
+        try { Audio.play("freespin"); } catch(e0){}
+      }
+
       if (!self._muted && ((res.wins && res.wins.length) || (res.scatter && res.scatter.amount > 0))) {
         try { Audio.play("win"); } catch(e2){}
+      }
+
+      if (!self._muted && fsEnded) {
+        // Reuse freespin event as "feature finished" cue when dedicated end audio is not provided.
+        try { Audio.play("freespin"); } catch(e3){}
       }
 
       self._drawWinLines(res.wins);
@@ -1189,8 +1201,20 @@ var SlotScene = cc.Scene.extend({
       self._setMessage(msgParts.join(" | "));
       self._refreshUI();
 
-      if (typeof self.scheduleOnce === "function") self.scheduleOnce(function(){ self.busy = false; }, 0.2);
-      else setTimeout(function(){ self.busy = false; }, 200);
+      var releaseBusy = function(){ self.busy = false; };
+      if (typeof self.scheduleOnce === "function") self.scheduleOnce(releaseBusy, 0.2);
+      else setTimeout(releaseBusy, 200);
+
+      // Auto-play remaining free spins so player doesn't need to tap SPIN during the feature.
+      if (res.freeSpinsRemaining > 0) {
+        var autoNext = function(){
+          if (self.busy) return;
+          if (!(SlotModel.state && SlotModel.state.inFreeSpins && SlotModel.state.freeSpins > 0)) return;
+          self._onSpin();
+        };
+        if (typeof self.scheduleOnce === "function") self.scheduleOnce(autoNext, 0.35);
+        else setTimeout(autoNext, 350);
+      }
     });
   },
 

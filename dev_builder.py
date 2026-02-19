@@ -953,12 +953,13 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(winBreakdown);
     this.ui.winBreakdown = winBreakdown;
 
-    // Panda Shores source-of-truth slots (landscape base -> dev canvas)
-    var spinAnchor = this._fromBaseLandscape(1189, -384);
-    var autoAnchor = this._fromBaseLandscape(1233, -634);
-    var betAnchor  = this._fromBaseLandscape(1276, -546);
-    var speedAnchor = this._fromBaseLandscape(1187, -546);
-    var popupAnchor = this._fromBaseLandscape(320, -335);
+    // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
+    // spin top, speed+bet middle row, auto bottom row.
+    var spinAnchor = cc.p(860, 210);
+    var speedAnchor = cc.p(790, 120);
+    var betAnchor  = cc.p(930, 120);
+    var autoAnchor = cc.p(860, 35);
+    var popupAnchor = cc.p(420, 150);
 
     this.ui.spinButtonsPanel = new cc.Node();
     this.ui.spinButtonsPanel.setPosition(spinAnchor);

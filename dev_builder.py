@@ -993,9 +993,9 @@ var SlotScene = cc.Scene.extend({
       self._unlockAudioOnce();
       self.onSpeedModeButtonClick();
     }, {
-      normal:["btn_speed_normal","btn_speed_normal_on","btn_speed_quick","btn_speed_turbo"],
-      on:["btn_speed_normal_on","btn_speed_quick_on","btn_speed_turbo_on"],
-      off:["btn_speed_normal","btn_speed_quick","btn_speed_turbo"]
+      normal:["btn_speed","btn_speed_quick","btn_quick_off"],
+      on:["btn_speed_on","btn_speed_quick_on","btn_quick_on","btn_speed"],
+      off:["btn_speed_off","btn_speed_quick_off","btn_quick_off","btn_speed"]
     }, 125, 125);
     this.ui.speedModeButton.setScale(0.55);
     this.uiLayer.addChild(this.ui.speedModeButton);
@@ -1232,14 +1232,13 @@ var SlotScene = cc.Scene.extend({
   onSpinButtonClick: function(){ this._onSpin(); },
 
   onStopButtonClick: function(){
-    if (!this.busy || !this._spinActive) return;
-    if (this.ui && this.ui.stopBtn) this._setButtonDisabled(this.ui.stopBtn, true);
+    if (!this.busy) return;
     this._forceStopRequested = true;
     this._setMessage("Stopping...");
   },
 
   onOpenBetPanelClick: function(){
-    if (this.busy || this._spinActive) return;
+    if (this.busy) return;
     this._closeAutoPanel(true);
     this._betPanelOpen = true;
     if (this.ui && this.ui.betInfoPanel) this.ui.betInfoPanel.setVisible(true);
@@ -1337,24 +1336,7 @@ var SlotScene = cc.Scene.extend({
     this._spinMode = mode || "normal";
     if (this.ui && this.ui.btnQuickSpin && this.ui.btnQuickSpin._setState) this.ui.btnQuickSpin._setState(this._spinMode === "quick" ? "on" : "normal");
     if (this.ui && this.ui.btnTurboSpin && this.ui.btnTurboSpin._setState) this.ui.btnTurboSpin._setState(this._spinMode === "turbo" ? "on" : "normal");
-    if (this.ui && this.ui.speedModeButton) {
-      var speedBtn = this.ui.speedModeButton;
-      var selected = "btn_speed_normal";
-      var selectedOn = "btn_speed_normal_on";
-      if (this._spinMode === "quick") {
-        selected = "btn_speed_quick";
-        selectedOn = "btn_speed_quick_on";
-      } else if (this._spinMode === "turbo") {
-        selected = "btn_speed_turbo";
-        selectedOn = "btn_speed_turbo_on";
-      }
-      speedBtn._img = {
-        normal: this._uiAsset([selected, selectedOn]),
-        on: this._uiAsset([selectedOn, selected]),
-        off: this._uiAsset([selected, selectedOn])
-      };
-      if (speedBtn._setState) speedBtn._setState(speedBtn._disabled ? "off" : "normal");
-    }
+    if (this.ui && this.ui.speedModeButton && this.ui.speedModeButton._setState) this.ui.speedModeButton._setState(this._spinMode === "normal" ? "normal" : "on");
   },
 
   onQuickSpinButtonClick: function(){ this.setSpinMode("quick"); this._updateAutoPanelLabel(); },
@@ -1697,7 +1679,7 @@ var SlotScene = cc.Scene.extend({
 
   _onSpin: function(){
     var self = this;
-    if (this.busy || this._spinActive) return;
+    if (this.busy) return;
 
     this.lineDraw.clear();
     this._setMessage("");
@@ -1716,7 +1698,6 @@ var SlotScene = cc.Scene.extend({
 
     this.busy = true;
     this._forceStopRequested = false;
-    if (this.ui && this.ui.stopBtn) this._setButtonDisabled(this.ui.stopBtn, false);
     this._setSpinButtonsState(true);
     this._refreshControlStates();
 

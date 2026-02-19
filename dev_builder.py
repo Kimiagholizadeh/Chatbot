@@ -954,6 +954,7 @@ var SlotScene = cc.Scene.extend({
     var spinAnchor = this._fromBaseLandscape(1189, -384);
     var autoAnchor = this._fromBaseLandscape(1233, -634);
     var betAnchor  = this._fromBaseLandscape(1276, -546);
+    var speedAnchor = this._fromBaseLandscape(1189, -546);
     var popupAnchor = this._fromBaseLandscape(320, -335);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -983,6 +984,17 @@ var SlotScene = cc.Scene.extend({
     }, 228, 230);
     this.ui.spinButtonsPanel.addChild(this.ui.stopBtn);
     this.ui.stopBtn.setVisible(false);
+
+    this.ui.speedModeButton = this._makeImageButton(speedAnchor.x, speedAnchor.y, "SPEED", function(){
+      self._unlockAudioOnce();
+      self.onSpeedModeButtonClick();
+    }, {
+      normal:["btn_speed","btn_speed_quick","btn_quick_off"],
+      on:["btn_speed_on","btn_speed_quick_on","btn_quick_on","btn_speed"],
+      off:["btn_speed_off","btn_speed_quick_off","btn_quick_off","btn_speed"]
+    }, 125, 125);
+    this.ui.speedModeButton.setScale(0.65);
+    this.uiLayer.addChild(this.ui.speedModeButton);
 
     this.ui.betPanelButton = this._makeImageButton(betAnchor.x, betAnchor.y, "BET", function(){
       self._unlockAudioOnce();
@@ -1054,6 +1066,10 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoPanelCloseButton = this._makeImageButton(950, -888.485, "", function(){ self.onCloseAutoPanelClick(); }, { normal:["btn_menu_close"], on:["btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 125, 125);
     this.ui.autoButtonContainer.addChild(this.ui.autoPanelCloseButton);
 
+    this.ui.autoPlayHeader = new cc.LabelTTF("AUTO PLAY", "Arial", 32);
+    this.ui.autoPlayHeader.setPosition(538, -980);
+    this.ui.autoButtonContainer.addChild(this.ui.autoPlayHeader);
+
     this.ui.autoCountLabel = new cc.LabelTTF("Auto count: 0", "Arial", 18);
     this.ui.autoCountLabel.setPosition(538, -1188);
     this.ui.autoButtonContainer.addChild(this.ui.autoCountLabel);
@@ -1082,10 +1098,19 @@ var SlotScene = cc.Scene.extend({
       })(ci);
     }
 
-    this.ui.btnQuickSpin = this._makeImageButton(702.043, -1100.331, "QUICK", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 210, 125);
+    this.ui.btnQuickSpin = this._makeImageButton(702.043, -1100.331, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 210, 125);
     this.ui.autoButtonContainer.addChild(this.ui.btnQuickSpin);
-    this.ui.btnTurboSpin = this._makeImageButton(239.246, -1100.331, "TURBO", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 210, 125);
+    this.ui.quickLabel = new cc.LabelTTF("QUICK\nSPIN", "Arial", 20);
+    this.ui.quickLabel.setAnchorPoint(0, 0.5);
+    this.ui.quickLabel.setPosition(810, -1100.331);
+    this.ui.autoButtonContainer.addChild(this.ui.quickLabel);
+
+    this.ui.btnTurboSpin = this._makeImageButton(239.246, -1100.331, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 210, 125);
     this.ui.autoButtonContainer.addChild(this.ui.btnTurboSpin);
+    this.ui.turboLabel = new cc.LabelTTF("TURBO\nSPIN", "Arial", 20);
+    this.ui.turboLabel.setAnchorPoint(0, 0.5);
+    this.ui.turboLabel.setPosition(347, -1100.331);
+    this.ui.autoButtonContainer.addChild(this.ui.turboLabel);
     this.ui.btnAutoSpin = this._makeImageButton(427.071, -1443.775, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 210, 210);
     this.ui.autoButtonContainer.addChild(this.ui.btnAutoSpin);
 
@@ -1284,10 +1309,20 @@ var SlotScene = cc.Scene.extend({
     this._spinMode = mode || "normal";
     if (this.ui && this.ui.btnQuickSpin && this.ui.btnQuickSpin._setState) this.ui.btnQuickSpin._setState(this._spinMode === "quick" ? "on" : "normal");
     if (this.ui && this.ui.btnTurboSpin && this.ui.btnTurboSpin._setState) this.ui.btnTurboSpin._setState(this._spinMode === "turbo" ? "on" : "normal");
+    if (this.ui && this.ui.speedModeButton && this.ui.speedModeButton._setState) this.ui.speedModeButton._setState(this._spinMode === "normal" ? "normal" : "on");
   },
 
   onQuickSpinButtonClick: function(){ this.setSpinMode("quick"); this._updateAutoPanelLabel(); },
   onTurboSpinButtonClick: function(){ this.setSpinMode("turbo"); this._updateAutoPanelLabel(); },
+
+  onSpeedModeButtonClick: function(){
+    var mode = this._spinMode || "normal";
+    if (mode === "normal") this.setSpinMode("quick");
+    else if (mode === "quick") this.setSpinMode("turbo");
+    else this.setSpinMode("normal");
+    this._updateAutoPanelLabel();
+    this._refreshControlStates();
+  },
 
   _updateAutoPanelLabel: function(){
     if (this.ui && this.ui.autoCountLabel) {
@@ -1299,6 +1334,7 @@ var SlotScene = cc.Scene.extend({
     var hasOverlay = !!(this._autoPanelOpen || this._betPanelOpen || this.busy);
     if (this.ui && this.ui.spinBtn) this._setButtonDisabled(this.ui.spinBtn, hasOverlay);
     if (this.ui && this.ui.betPanelButton) this._setButtonDisabled(this.ui.betPanelButton, !!(this.busy || this._autoPanelOpen));
+    if (this.ui && this.ui.speedModeButton) this._setButtonDisabled(this.ui.speedModeButton, !!(this.busy || this._autoPanelOpen || this._betPanelOpen));
     if (this.ui && this.ui.autoButton) this._setButtonDisabled(this.ui.autoButton, !!(this.busy || this._betPanelOpen));
 
     var canAutoStart = (this._autoRemaining || 0) > 0;

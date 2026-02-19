@@ -1838,9 +1838,11 @@ var SlotScene = cc.Scene.extend({
     if (this._spinMode === "turbo") spinSec = 1.2;
 
     // Spin then land exactly on res.grid (no symbol swapping after stop)
-    this._startSpinAnimation(spinSec, res.grid, function(){
+    var safeGrid = this._normalizeGridForSpin(res && res.grid ? res.grid : null);
+
+    this._startSpinAnimation(spinSec, safeGrid, function(){
       try {
-      self._renderGrid(res.grid);
+      self._renderGrid(safeGrid);
 
       var fsStarted = (!res.inFreeSpins && res.freeSpinsRemaining > 0);
       var fsEnded = (res.inFreeSpins && res.freeSpinsRemaining <= 0);
@@ -1913,6 +1915,27 @@ var SlotScene = cc.Scene.extend({
     });
   },
 
+  _normalizeGridForSpin: function(grid){
+    var reels = SlotModel.cfg.math.reel_count;
+    var rows  = SlotModel.cfg.math.row_count;
+
+    var ids = [];
+    for (var k in SlotModel.math.symbols) ids.push(k);
+    if (!ids.length) ids = ["A","K","Q","J","10","9","WILD","SCAT"];
+
+    var out = [];
+    for (var r=0; r<rows; r++) {
+      var srcRow = (grid && grid[r] && grid[r].length) ? grid[r] : null;
+      var row = [];
+      for (var c=0; c<reels; c++) {
+        var v = srcRow && srcRow[c] !== undefined && srcRow[c] !== null ? srcRow[c] : ids[Math.floor(Math.random()*ids.length)];
+        row.push(v);
+      }
+      out.push(row);
+    }
+    return out;
+  },
+
   // ======== FIXED RIBBON SPIN ========
   // - Reels spin in place (same vertical axis)
   // - No overlap / disappearing symbols
@@ -1921,6 +1944,12 @@ var SlotScene = cc.Scene.extend({
     var self = this;
     var reels = SlotModel.cfg.math.reel_count;
     var rows  = SlotModel.cfg.math.row_count;
+
+    finalGrid = this._normalizeGridForSpin(finalGrid);
+    if (!this.reelStrips || this.reelStrips.length !== reels || !this.symbolCells || this.symbolCells.length !== rows) {
+      this._rebuildGrid();
+      this._renderGrid(finalGrid);
+    }
 
     var ids = [];
     for (var k in SlotModel.math.symbols) ids.push(k);
@@ -1947,6 +1976,7 @@ var SlotScene = cc.Scene.extend({
     // show ribbon sprites
     for (var c3=0;c3<reels;c3++){
       var strip = this.reelStrips[c3];
+      if (!strip || !strip.sprites || !strip.sprites.length) continue;
       for (var i=0;i<strip.sprites.length;i++){
         var sym = ids[Math.floor(Math.random()*ids.length)];
         this._setSpriteSymbol(strip.sprites[i], sym);
@@ -1963,6 +1993,7 @@ var SlotScene = cc.Scene.extend({
 
     function layoutReel(reelIndex){
       var strip = self.reelStrips[reelIndex];
+      if (!strip || !strip.sprites || !strip.sprites.length) return;
       var off = self._spinOffsets[reelIndex];
 
       for (var j=0;j<strip.sprites.length;j++){
@@ -1979,6 +2010,7 @@ var SlotScene = cc.Scene.extend({
 
     function rotateOnce(reelIndex){
       var strip = self.reelStrips[reelIndex];
+      if (!strip || !strip.sprites || !strip.sprites.length) return null;
       var sprites = strip.sprites;
       var last = sprites.pop();
       sprites.unshift(last);
@@ -2026,6 +2058,7 @@ var SlotScene = cc.Scene.extend({
 
           // rotate sprites to simulate movement
           var entering = rotateOnce(c);
+          if (!entering) continue;
 
           if (inLanding) {
             // During landing, keep everything deterministic:
@@ -2040,6 +2073,7 @@ var SlotScene = cc.Scene.extend({
         if (inLanding) {
           // Force visible rows to be EXACTLY finalGrid every frame
           var strip2 = self.reelStrips[c];
+          if (!strip2 || !strip2.sprites || strip2.sprites.length < (rows + 2)) continue;
           // visible row rr corresponds to sprite index rr+1 (because sprites[0] is extra above)
           for (var rr=0; rr<rows; rr++){
             var spv = strip2.sprites[rr + 1];

@@ -903,6 +903,15 @@ var SlotScene = cc.Scene.extend({
     return n;
   },
 
+
+  _fromBaseLandscape: function(x, y){
+    // Map base vendor landscape coordinates (approx 2732x2048 design space centered at 0,0)
+    // into this Dev Web runtime canvas (960x540, centered at 480,270).
+    var baseHalfW = 1366.0;
+    var baseHalfH = 1024.0;
+    return cc.p(480 + (x / baseHalfW) * 480, 270 + (y / baseHalfH) * 270);
+  },
+
   _buildUI: function(){
     var self = this;
 
@@ -941,9 +950,14 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(winBreakdown);
     this.ui.winBreakdown = winBreakdown;
 
-    // Common dashboard anchor style (from shared UI map)
+    // Use base-vendor landscape anchors mapped into Dev Web canvas.
+    var spinAnchor = this._fromBaseLandscape(1189, -384);
+    var autoAnchor = this._fromBaseLandscape(1233, -634);
+    var betAnchor = this._fromBaseLandscape(1276, -546);
+    var popupAnchor = this._fromBaseLandscape(320, -335);
+
     this.ui.spinButtonsPanel = new cc.Node();
-    this.ui.spinButtonsPanel.setPosition(840, 100);
+    this.ui.spinButtonsPanel.setPosition(spinAnchor.x, spinAnchor.y);
     this.uiLayer.addChild(this.ui.spinButtonsPanel);
 
     this.ui.spinBtn = this._makeImageButton(0, 0, I18N.t("spin","SPIN"), function(){
@@ -969,7 +983,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.spinButtonsPanel.addChild(this.ui.stopBtn);
     this.ui.stopBtn.setVisible(false);
 
-    this.ui.betPanelButton = this._makeImageButton(930, 52, "BET", function(){
+    this.ui.betPanelButton = this._makeImageButton(betAnchor.x, betAnchor.y, "BET", function(){
       self._unlockAudioOnce();
       self.onOpenBetPanelClick();
     }, {
@@ -979,7 +993,7 @@ var SlotScene = cc.Scene.extend({
     }, 125, 125);
     this.uiLayer.addChild(this.ui.betPanelButton);
 
-    this.ui.autoButton = this._makeImageButton(760, 52, "AUTO", function(){
+    this.ui.autoButton = this._makeImageButton(autoAnchor.x, autoAnchor.y, "AUTO", function(){
       self._unlockAudioOnce();
       self.onOpenAutoPanelClick();
     }, {
@@ -989,7 +1003,7 @@ var SlotScene = cc.Scene.extend({
     }, 125, 125);
     this.uiLayer.addChild(this.ui.autoButton);
 
-    this.ui.autoStopButton = this._makeImageButton(760, 52, "STOP AUTO", function(){
+    this.ui.autoStopButton = this._makeImageButton(autoAnchor.x, autoAnchor.y, "STOP AUTO", function(){
       self._unlockAudioOnce();
       self.onStopAutoButtonClick();
     }, {
@@ -1041,7 +1055,7 @@ var SlotScene = cc.Scene.extend({
     }, 120, 44);
     this.uiLayer.addChild(rowsBtn);
 
-    this.ui.betInfoPanel = this._makePanel(480, 250, 1100, 476, ["bet_popup_panel","popup_panel_bg","bet_panel","panel_bet"]);
+    this.ui.betInfoPanel = this._makePanel(popupAnchor.x, popupAnchor.y, 1100, 476, ["bet_popup_panel","popup_panel_bg","bet_panel","panel_bet"]);
     this.uiLayer.addChild(this.ui.betInfoPanel, 200);
     this.ui.betInfoPanel.setVisible(false);
 
@@ -1061,7 +1075,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.betPanelText.setPosition(540, -1260);
     this.ui.betButtons.addChild(this.ui.betPanelText);
 
-    this.ui.autoPanelInfo = this._makePanel(480, 250, 1100, 668, ["auto_popup_panel","popup_panel_bg","bet_popup_panel","auto_panel"]);
+    this.ui.autoPanelInfo = this._makePanel(popupAnchor.x, popupAnchor.y, 1100, 668, ["auto_popup_panel","popup_panel_bg","bet_popup_panel","auto_panel"]);
     this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
     this.ui.autoPanelInfo.setVisible(false);
 

@@ -950,14 +950,9 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(winBreakdown);
     this.ui.winBreakdown = winBreakdown;
 
-    // Use base-vendor landscape anchors mapped into Dev Web canvas.
-    var spinAnchor = this._fromBaseLandscape(1189, -384);
-    var autoAnchor = this._fromBaseLandscape(1233, -634);
-    var betAnchor = this._fromBaseLandscape(1276, -546);
-    var popupAnchor = this._fromBaseLandscape(320, -335);
-
+    // Dev-web anchors tuned to avoid overlap while keeping right-side cluster.
     this.ui.spinButtonsPanel = new cc.Node();
-    this.ui.spinButtonsPanel.setPosition(spinAnchor.x, spinAnchor.y);
+    this.ui.spinButtonsPanel.setPosition(840, 100);
     this.uiLayer.addChild(this.ui.spinButtonsPanel);
 
     this.ui.spinBtn = this._makeImageButton(0, 0, I18N.t("spin","SPIN"), function(){
@@ -969,7 +964,7 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_spin"],
       on:["btn_spin_on","btn_spin"],
       off:["btn_spin_off","btn_spin"]
-    }, 228, 230);
+    }, 118, 118);
     this.ui.spinButtonsPanel.addChild(this.ui.spinBtn);
 
     this.ui.stopBtn = this._makeImageButton(0, 0, "STOP", function(){
@@ -979,38 +974,38 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_stop","btn_stop_on"],
       on:["btn_stop_on","btn_stop"],
       off:["btn_stop_off","btn_stop"]
-    }, 228, 230);
+    }, 118, 118);
     this.ui.spinButtonsPanel.addChild(this.ui.stopBtn);
     this.ui.stopBtn.setVisible(false);
 
-    this.ui.betPanelButton = this._makeImageButton(betAnchor.x, betAnchor.y, "BET", function(){
+    this.ui.betPanelButton = this._makeImageButton(930, 52, "BET", function(){
       self._unlockAudioOnce();
       self.onOpenBetPanelClick();
     }, {
       normal:["btn_bet"],
       on:["btn_bet_on","btn_bet"],
       off:["btn_bet_off","btn_bet"]
-    }, 125, 125);
+    }, 88, 88);
     this.uiLayer.addChild(this.ui.betPanelButton);
 
-    this.ui.autoButton = this._makeImageButton(autoAnchor.x, autoAnchor.y, "AUTO", function(){
+    this.ui.autoButton = this._makeImageButton(760, 52, "AUTO", function(){
       self._unlockAudioOnce();
       self.onOpenAutoPanelClick();
     }, {
       normal:["btn_auto"],
       on:["btn_auto_on","btn_auto"],
       off:["btn_auto_off","btn_auto"]
-    }, 125, 125);
+    }, 88, 88);
     this.uiLayer.addChild(this.ui.autoButton);
 
-    this.ui.autoStopButton = this._makeImageButton(autoAnchor.x, autoAnchor.y, "STOP AUTO", function(){
+    this.ui.autoStopButton = this._makeImageButton(760, 20, "STOP AUTO", function(){
       self._unlockAudioOnce();
       self.onStopAutoButtonClick();
     }, {
       normal:["btn_auto_active","btn_stop_on"],
       on:["btn_auto_active","btn_stop_on"],
       off:["btn_auto_active","btn_stop_off"]
-    }, 125, 125);
+    }, 88, 68);
     this.uiLayer.addChild(this.ui.autoStopButton);
     this.ui.autoStopButton.setVisible(false);
 
@@ -1026,7 +1021,7 @@ var SlotScene = cc.Scene.extend({
       self._showAllPaylines = false;
       self._refreshUI();
       try { if (!self._muted) Audio.play("click"); } catch(e){}
-    }, 208, 82);
+    }, 130, 44);
     this.uiLayer.addChild(linesBtn);
 
     var reelsBtn = this._makeButton(140, 110, "REELS", function(){
@@ -1055,71 +1050,52 @@ var SlotScene = cc.Scene.extend({
     }, 120, 44);
     this.uiLayer.addChild(rowsBtn);
 
-    this.ui.betInfoPanel = this._makePanel(popupAnchor.x, popupAnchor.y, 1100, 476, ["bet_popup_panel","popup_panel_bg","bet_panel","panel_bet"]);
+    this.ui.betInfoPanel = this._makePanel(480, 250, 680, 250, ["bet_popup_panel","popup_panel_bg","bet_panel","panel_bet"]);
     this.uiLayer.addChild(this.ui.betInfoPanel, 200);
     this.ui.betInfoPanel.setVisible(false);
 
-    this.ui.betButtons = new cc.Node();
-    this.ui.betButtons.setPosition(0, 1215);
-    this.ui.betInfoPanel.addChild(this.ui.betButtons);
-
-    this.ui.betPanelCloseButton = this._makeImageButton(950, -1162, "X", function(){ self.onCloseBetPanelClick(); }, { normal:["btn_menu_close"], on:["btn_close_on_menu","btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 90, 90);
-    this.ui.betButtons.addChild(this.ui.betPanelCloseButton);
-    this.ui.betPanel_decBet = this._makeImageButton(150, -1365, "-", function(){ self.onDecreaseBetClick(); }, { normal:["btn_bet_minus"], on:["btn_bet_minus_on","btn_bet_minus"], off:["btn_bet_minus_off","btn_bet_minus"] }, 125, 125);
-    this.ui.betButtons.addChild(this.ui.betPanel_decBet);
-    this.ui.betPanel_incBet = this._makeImageButton(805, -1365, "+", function(){ self.onIncreaseBetClick(); }, { normal:["btn_bet_plus"], on:["btn_bet_plus_on","btn_bet_plus"], off:["btn_bet_plus_off","btn_bet_plus"] }, 125, 125);
-    this.ui.betButtons.addChild(this.ui.betPanel_incBet);
-    this.ui.betPanelMaxBtn = this._makeImageButton(540, -1580, "MAX BET", function(){ self.onSetMaxBetClick(); }, { normal:["btn_bet_max","btn_auto_amt"], on:["btn_bet_max","btn_auto_amt_on","btn_auto_amt"], off:["btn_bet_max","btn_auto_amt"] }, 208, 82);
-    this.ui.betButtons.addChild(this.ui.betPanelMaxBtn);
+    this.ui.betPanelCloseButton = this._makeImageButton(300, 95, "X", function(){ self.onCloseBetPanelClick(); }, { normal:["btn_menu_close"], on:["btn_close_on_menu","btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 54, 40);
+    this.ui.betInfoPanel.addChild(this.ui.betPanelCloseButton);
+    this.ui.betPanel_decBet = this._makeImageButton(-210, -5, "-", function(){ self.onDecreaseBetClick(); }, { normal:["btn_bet_minus"], on:["btn_bet_minus_on","btn_bet_minus"], off:["btn_bet_minus_off","btn_bet_minus"] }, 80, 46);
+    this.ui.betInfoPanel.addChild(this.ui.betPanel_decBet);
+    this.ui.betPanel_incBet = this._makeImageButton(210, -5, "+", function(){ self.onIncreaseBetClick(); }, { normal:["btn_bet_plus"], on:["btn_bet_plus_on","btn_bet_plus"], off:["btn_bet_plus_off","btn_bet_plus"] }, 80, 46);
+    this.ui.betInfoPanel.addChild(this.ui.betPanel_incBet);
+    this.ui.betPanelMaxBtn = this._makeImageButton(0, -78, "MAX BET", function(){ self.onSetMaxBetClick(); }, { normal:["btn_bet_max","btn_auto_amt"], on:["btn_bet_max","btn_auto_amt_on","btn_auto_amt"], off:["btn_bet_max","btn_auto_amt"] }, 170, 44);
+    this.ui.betInfoPanel.addChild(this.ui.betPanelMaxBtn);
     this.ui.betPanelText = new cc.LabelTTF("", "Arial", 19);
-    this.ui.betPanelText.setPosition(540, -1260);
-    this.ui.betButtons.addChild(this.ui.betPanelText);
+    this.ui.betPanelText.setPosition(0, 42);
+    this.ui.betInfoPanel.addChild(this.ui.betPanelText);
 
-    this.ui.autoPanelInfo = this._makePanel(popupAnchor.x, popupAnchor.y, 1100, 668, ["auto_popup_panel","popup_panel_bg","bet_popup_panel","auto_panel"]);
+    this.ui.autoPanelInfo = this._makePanel(480, 250, 760, 320, ["auto_popup_panel","popup_panel_bg","bet_popup_panel","auto_panel"]);
     this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
     this.ui.autoPanelInfo.setVisible(false);
 
-    this.ui.autoButtonContainer = new cc.Node();
-    this.ui.autoButtonContainer.setPosition(0, 1151);
-    this.ui.autoPanelInfo.addChild(this.ui.autoButtonContainer);
-
-    this.ui.autoPanelCloseButton = this._makeImageButton(950, -888, "X", function(){ self.onCloseAutoPanelClick(); }, { normal:["btn_menu_close"], on:["btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 125, 125);
-    this.ui.autoButtonContainer.addChild(this.ui.autoPanelCloseButton);
+    this.ui.autoPanelCloseButton = this._makeImageButton(340, 126, "X", function(){ self.onCloseAutoPanelClick(); }, { normal:["btn_menu_close"], on:["btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 54, 40);
+    this.ui.autoPanelInfo.addChild(this.ui.autoPanelCloseButton);
 
     this.ui.autoCountLabel = new cc.LabelTTF("Auto count: 0", "Arial", 18);
-    this.ui.autoCountLabel.setPosition(538, -1188);
-    this.ui.autoButtonContainer.addChild(this.ui.autoCountLabel);
-
-    this.ui.autoBtnContainer = new cc.Node();
-    this.ui.autoBtnContainer.setPosition(538, -1300);
-    this.ui.autoButtonContainer.addChild(this.ui.autoBtnContainer);
+    this.ui.autoCountLabel.setPosition(0, 95);
+    this.ui.autoPanelInfo.addChild(this.ui.autoCountLabel);
 
     var counts = [20, 50, 100, 200, 500, 1000];
-    var pos = {
-      20:[-258.299, -69.276],
-      50:[-4.016, -69.276],
-      100:[252.409, -69.276],
-      200:[-258.299, 71.417],
-      500:[-4.016, 71.417],
-      1000:[252.409, 71.417]
-    };
     this.ui.autoCountButtons = [];
     for (var ci=0; ci<counts.length; ci++) {
       (function(idx){
+        var x = -240 + (idx % 3) * 240;
+        var y = (idx < 3) ? 35 : -25;
         var cnt = counts[idx];
-        var xy = pos[cnt];
-        var b = self._makeImageButton(xy[0], xy[1], String(cnt), function(){ self.enableAutoSpin(null, cnt); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_off"], hideLabelWhenTextured:false }, 208, 82);
-        self.ui.autoBtnContainer.addChild(b);
+        var b = self._makeImageButton(x, y, String(cnt), function(){ self.enableAutoSpin(null, cnt); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_off"], hideLabelWhenTextured:false }, 130, 44);
+        self.ui.autoPanelInfo.addChild(b);
         self.ui.autoCountButtons.push(b);
       })(ci);
     }
 
-    this.ui.btnQuickSpin = this._makeImageButton(702, -1100, "QUICK", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 210, 125);
-    this.ui.autoButtonContainer.addChild(this.ui.btnQuickSpin);
-    this.ui.btnTurboSpin = this._makeImageButton(239, -1100, "TURBO", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 210, 125);
-    this.ui.autoButtonContainer.addChild(this.ui.btnTurboSpin);
-    this.ui.btnAutoSpin = this._makeImageButton(427, -1444, "START AUTO", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 210, 210);
-    this.ui.autoButtonContainer.addChild(this.ui.btnAutoSpin);
+    this.ui.btnQuickSpin = this._makeImageButton(120, -88, "QUICK", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 130, 42);
+    this.ui.autoPanelInfo.addChild(this.ui.btnQuickSpin);
+    this.ui.btnTurboSpin = this._makeImageButton(-120, -88, "TURBO", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 130, 42);
+    this.ui.autoPanelInfo.addChild(this.ui.btnTurboSpin);
+    this.ui.btnAutoSpin = this._makeImageButton(0, -138, "START AUTO", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 190, 44);
+    this.ui.autoPanelInfo.addChild(this.ui.btnAutoSpin);
 
     var muteBtn = this._makeButton(900, 520, "VOL", function(){
       self._unlockAudioOnce();

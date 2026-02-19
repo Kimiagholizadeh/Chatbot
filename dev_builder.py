@@ -1089,13 +1089,46 @@ var SlotScene = cc.Scene.extend({
     this.ui.btnAutoSpin = this._makeImageButton(427.071, -1443.775, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 210, 210);
     this.ui.autoButtonContainer.addChild(this.ui.btnAutoSpin);
 
-    var muteBtn = this._makeButton(900, 520, "VOL", function(){
+    // Settings / info controls (top-right) so audio + help are always available.
+    this.ui.settingsButton = this._makeImageButton(900, 520, "SET", function(){
+      self._unlockAudioOnce();
+      self._toggleSettingsMenu();
+    }, {
+      normal:["btn_setting","btn_settings","btn_menu"],
+      on:["btn_setting_on","btn_settings_on","btn_menu_on","btn_setting"],
+      off:["btn_setting_off","btn_settings_off","btn_menu_off","btn_setting"]
+    }, 70, 70);
+    this.uiLayer.addChild(this.ui.settingsButton);
+
+    this.ui.settingsPanel = new cc.Node();
+    this.ui.settingsPanel.setPosition(810, 468);
+    this.uiLayer.addChild(this.ui.settingsPanel, 220);
+    this.ui.settingsPanel.setVisible(false);
+
+    this.ui.audioButton = this._makeButton(0, 0, "AUDIO: ON", function(){
       self._unlockAudioOnce();
       self._muted = !self._muted;
-      if (muteBtn && muteBtn._label) muteBtn._label.setString(self._muted ? "MUTE" : "VOL");
+      if (self.ui && self.ui.audioButton && self.ui.audioButton._label) {
+        self.ui.audioButton._label.setString(self._muted ? "AUDIO: OFF" : "AUDIO: ON");
+      }
       try { Audio.unlock(); } catch(e){}
-    }, 70, 34);
-    this.uiLayer.addChild(muteBtn);
+    }, 160, 34);
+    this.ui.settingsPanel.addChild(this.ui.audioButton);
+
+    this.ui.infoButton = this._makeButton(0, -44, "INFO", function(){
+      self._toggleInfoPanel();
+    }, 160, 34);
+    this.ui.settingsPanel.addChild(this.ui.infoButton);
+
+    this.ui.infoPanel = this._makePanel(480, 270, 680, 330, ["popup_panel_bg","help_popup_panel"]);
+    this.uiLayer.addChild(this.ui.infoPanel, 230);
+    this.ui.infoPanel.setVisible(false);
+    this.ui.infoPanelClose = this._makeButton(300, 140, "X", function(){ self._toggleInfoPanel(false); }, 52, 32);
+    this.ui.infoPanel.addChild(this.ui.infoPanelClose);
+    this.ui.infoText = new cc.LabelTTF(this._getInfoText(), "Arial", 16, cc.size(610, 250), cc.TEXT_ALIGNMENT_LEFT, cc.VERTICAL_TEXT_ALIGNMENT_TOP);
+    this.ui.infoText.setAnchorPoint(0, 1);
+    this.ui.infoText.setPosition(-300, 120);
+    this.ui.infoPanel.addChild(this.ui.infoText);
 
     if (cc.DrawNode) {
       try { this.lineDraw = new cc.DrawNode(); this.gridLayer.addChild(this.lineDraw, 30); } catch (e) { this.lineDraw = null; }
@@ -1105,6 +1138,37 @@ var SlotScene = cc.Scene.extend({
     this.setSpinMode("normal");
     this._refreshControlStates();
     this._refreshUI();
+  },
+
+  _toggleSettingsMenu: function(forceOpen){
+    var show = (typeof forceOpen === "boolean") ? forceOpen : !(this.ui && this.ui.settingsPanel && this.ui.settingsPanel.isVisible());
+    if (this.ui && this.ui.settingsPanel) this.ui.settingsPanel.setVisible(show);
+    if (!show) this._toggleInfoPanel(false);
+  },
+
+  _getInfoText: function(){
+    var cfg = SlotModel && SlotModel.cfg ? SlotModel.cfg : {};
+    var h = cfg.help_texts || cfg.helpTexts || {};
+    var lines = [];
+    if (h.how_to_play) lines.push("How to play: " + h.how_to_play);
+    if (h.paytable_note) lines.push("Paytable: " + h.paytable_note);
+    if (h.rtp) lines.push("RTP: " + h.rtp);
+    if (h.volatility) lines.push("Volatility: " + h.volatility);
+    if (!lines.length) {
+      lines.push("Spin to start.");
+      lines.push("Use BET to open bet controls.");
+      lines.push("Use AUTO to configure autoplay counts.");
+      lines.push("Use STOP while reels are spinning.");
+    }
+    return lines.join("\n\n");
+  },
+
+  _toggleInfoPanel: function(forceOpen){
+    if (!this.ui || !this.ui.infoPanel) return;
+    var show = (typeof forceOpen === "boolean") ? forceOpen : !this.ui.infoPanel.isVisible();
+    if (show && this.ui.infoText && this.ui.infoText.setString) this.ui.infoText.setString(this._getInfoText());
+    this.ui.infoPanel.setVisible(show);
+    if (show) this._toggleSettingsMenu(true);
   },
 
   _setSpinButtonsState: function(spinning){

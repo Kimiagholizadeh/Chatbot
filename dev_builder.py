@@ -903,6 +903,21 @@ var SlotScene = cc.Scene.extend({
     return n;
   },
 
+  _makeHorizontalLine: function(width, color){
+    var lineColor = color || cc.color(180, 180, 180, 220);
+    if (cc.DrawNode) {
+      try {
+        var dn = new cc.DrawNode();
+        dn.drawSegment(cc.p(-width/2, 0), cc.p(width/2, 0), 2, lineColor);
+        return dn;
+      } catch (e) {}
+    }
+    var fallback = new cc.LayerColor(lineColor, width, 2);
+    if (fallback.setIgnoreAnchorPointForPosition) fallback.setIgnoreAnchorPointForPosition(false);
+    fallback.setPosition(-width/2, -1);
+    return fallback;
+  },
+
 
   _fromBaseLandscape: function(x, y){
     // Map Panda dashboard landscape coordinates into the dev canvas.
@@ -1057,8 +1072,8 @@ var SlotScene = cc.Scene.extend({
     this.ui.betHeader.setPosition(0, 130);
     this.ui.betInfoPanel.addChild(this.ui.betHeader);
 
-    this.ui.betSubHeaderLine = new cc.DrawNode();
-    this.ui.betSubHeaderLine.drawSegment(cc.p(-210, 100), cc.p(210, 100), 2, cc.color(180, 180, 180, 220));
+    this.ui.betSubHeaderLine = this._makeHorizontalLine(420, cc.color(180, 180, 180, 220));
+    this.ui.betSubHeaderLine.setPosition(0, 100);
     this.ui.betInfoPanel.addChild(this.ui.betSubHeaderLine);
 
     this.ui.betPanelCloseButton = this._makeImageButton(220, 145, "X", function(){ self.onCloseBetPanelClick(); }, { normal:["btn_menu_close"], on:["btn_close_on_menu","btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 72, 72);
@@ -1090,8 +1105,8 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoPlayHeader.setPosition(0, 195);
     this.ui.autoPanelInfo.addChild(this.ui.autoPlayHeader);
 
-    this.ui.autoSubHeaderLine = new cc.DrawNode();
-    this.ui.autoSubHeaderLine.drawSegment(cc.p(-280, 166), cc.p(280, 166), 2, cc.color(180, 180, 180, 220));
+    this.ui.autoSubHeaderLine = this._makeHorizontalLine(560, cc.color(180, 180, 180, 220));
+    this.ui.autoSubHeaderLine.setPosition(0, 166);
     this.ui.autoPanelInfo.addChild(this.ui.autoSubHeaderLine);
 
     this.ui.autoPanelCloseButton = this._makeImageButton(305, 208, "X", function(){ self.onCloseAutoPanelClick(); }, { normal:["btn_menu_close"], on:["btn_menu_close_on","btn_menu_close"], off:["btn_menu_close_off","btn_menu_close"] }, 90, 90);
@@ -1794,7 +1809,8 @@ var SlotScene = cc.Scene.extend({
     var self = this;
     if (this.busy || this._spinActive) return;
 
-    this.lineDraw.clear();
+    if (!this.lineDraw) this.lineDraw = { clear:function(){}, drawSegment:function(){} };
+    if (this.lineDraw && this.lineDraw.clear) this.lineDraw.clear();
     this._setMessage("");
 
     var beforeFS = (SlotModel.state && SlotModel.state.inFreeSpins) ? (SlotModel.state.freeSpins || 0) : 0;
@@ -2087,6 +2103,7 @@ var SlotScene = cc.Scene.extend({
 
   _drawWinLines: function(wins){
     if (!wins || !wins.length) return;
+    if (!this.lineDraw || !this.lineDraw.drawSegment) return;
 
     var reels = SlotModel.cfg.math.reel_count;
     var rows  = SlotModel.cfg.math.row_count;

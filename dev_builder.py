@@ -955,15 +955,15 @@ var SlotScene = cc.Scene.extend({
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
-    var spinAnchor = cc.p(860, 210);
-    var speedAnchor = cc.p(790, 120);
-    var betAnchor  = cc.p(930, 120);
-    var autoAnchor = cc.p(860, 35);
-    var popupAnchor = cc.p(420, 150);
+    var spinAnchor = cc.p(860, 218);
+    var speedAnchor = cc.p(815, 126);
+    var betAnchor  = cc.p(905, 126);
+    var autoAnchor = cc.p(860, 40);
+    var popupAnchor = cc.p(420, 166);
 
     this.ui.spinButtonsPanel = new cc.Node();
     this.ui.spinButtonsPanel.setPosition(spinAnchor);
-    this.ui.spinButtonsPanel.setScale(0.65);
+    this.ui.spinButtonsPanel.setScale(0.58);
     this.uiLayer.addChild(this.ui.spinButtonsPanel);
 
     this.ui.spinBtn = this._makeImageButton(0, 0, I18N.t("spin","SPIN"), function(){
@@ -997,7 +997,7 @@ var SlotScene = cc.Scene.extend({
       on:["btn_speed_on","btn_speed_quick_on","btn_quick_on","btn_speed"],
       off:["btn_speed_off","btn_speed_quick_off","btn_quick_off","btn_speed"]
     }, 125, 125);
-    this.ui.speedModeButton.setScale(0.65);
+    this.ui.speedModeButton.setScale(0.58);
     this.uiLayer.addChild(this.ui.speedModeButton);
 
     this.ui.betPanelButton = this._makeImageButton(betAnchor.x, betAnchor.y, "BET", function(){
@@ -1008,12 +1008,12 @@ var SlotScene = cc.Scene.extend({
       on:["btn_bet_on","btn_bet"],
       off:["btn_bet_off","btn_bet"]
     }, 125, 125);
-    this.ui.betPanelButton.setScale(0.65);
+    this.ui.betPanelButton.setScale(0.58);
     this.uiLayer.addChild(this.ui.betPanelButton);
 
     this.ui.autoSpinPanel = new cc.Node();
     this.ui.autoSpinPanel.setPosition(autoAnchor);
-    this.ui.autoSpinPanel.setScale(0.65);
+    this.ui.autoSpinPanel.setScale(0.58);
     this.uiLayer.addChild(this.ui.autoSpinPanel);
 
     this.ui.autoButton = this._makeImageButton(0, 0, "AUTO", function(){
@@ -1037,10 +1037,23 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoSpinPanel.addChild(this.ui.autoStopButton);
     this.ui.autoStopButton.setVisible(false);
 
-    this.ui.betInfoPanel = this._makePanel(popupAnchor.x, popupAnchor.y, 1100, 476, ["bet_popup_panel_bg","popup_panel_bg","auto_popup_panel","auto_panel"]);
-    this.ui.betInfoPanel.setScale(0.65);
+    this.ui.betInfoPanel = new cc.Node();
+    this.ui.betInfoPanel.setPosition(popupAnchor);
+    this.ui.betInfoPanel.setScale(0.58);
     this.uiLayer.addChild(this.ui.betInfoPanel, 200);
     this.ui.betInfoPanel.setVisible(false);
+
+    var betBgPath = this._uiAsset(["bet_popup_panel_bg","popup_panel_bg","auto_popup_panel","auto_panel"]);
+    if (betBgPath) {
+      var betBg = new cc.Sprite(betBgPath);
+      betBg.setPosition(538, -290);
+      this._fitSpriteTo(betBg, 1100, 476, false);
+      this.ui.betInfoPanel.addChild(betBg);
+    }
+
+    this.ui.betHeader = new cc.LabelTTF("BET LEVEL", "Arial", 30);
+    this.ui.betHeader.setPosition(538, -1040);
+    this.ui.betInfoPanel.addChild(this.ui.betHeader);
 
     this.ui.betButtons = new cc.Node();
     this.ui.betButtons.setPosition(0, 1214.677);
@@ -1058,10 +1071,20 @@ var SlotScene = cc.Scene.extend({
     this.ui.betPanelText.setPosition(540, -1260);
     this.ui.betButtons.addChild(this.ui.betPanelText);
 
-    this.ui.autoPanelInfo = this._makePanel(popupAnchor.x, popupAnchor.y, 1100, 668, ["popup_panel_bg","auto_popup_panel","bet_popup_panel","auto_panel"]);
-    this.ui.autoPanelInfo.setScale(0.65);
+    this.ui.autoPanelInfo = new cc.Node();
+    this.ui.autoPanelInfo.setPosition(popupAnchor);
+    this.ui.autoPanelInfo.setScale(0.58);
     this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
     this.ui.autoPanelInfo.setVisible(false);
+
+    var autoBgPath = this._uiAsset(["popup_panel_bg","auto_popup_panel","bet_popup_panel","auto_panel"]);
+    if (autoBgPath) {
+      var autoBg = new cc.Sprite(autoBgPath);
+      autoBg.setPosition(530, 142.632);
+      autoBg.setAnchorPoint(0.5, 1);
+      this._fitSpriteTo(autoBg, 1100, 667.7, false);
+      this.ui.autoPanelInfo.addChild(autoBg);
+    }
 
     this.ui.autoButtonContainer = new cc.Node();
     this.ui.autoButtonContainer.setPosition(0, 1151.176);
@@ -1119,7 +1142,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoButtonContainer.addChild(this.ui.btnAutoSpin);
 
     // Settings / info controls (top-right) so audio + help are always available.
-    this.ui.settingsButton = this._makeImageButton(900, 520, "SET", function(){
+    this.ui.settingsButton = this._makeImageButton(64, 58, "SET", function(){
       self._unlockAudioOnce();
       self._toggleSettingsMenu();
     }, {
@@ -1130,7 +1153,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsButton);
 
     this.ui.settingsPanel = new cc.Node();
-    this.ui.settingsPanel.setPosition(810, 468);
+    this.ui.settingsPanel.setPosition(154, 118);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 

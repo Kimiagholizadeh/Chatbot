@@ -905,11 +905,14 @@ var SlotScene = cc.Scene.extend({
 
 
   _fromBaseLandscape: function(x, y){
-    // Map base vendor landscape coordinates (approx 2732x2048 design space centered at 0,0)
-    // into this Dev Web runtime canvas (960x540, centered at 480,270).
+    // Map Panda dashboard landscape coordinates into the dev canvas.
+    // Use a 2732x1536 reference so X/Y scale stays uniform and slot spacing
+    // matches the source layout (spin top, speed+bet row, auto below).
     var baseHalfW = 1366.0;
-    var baseHalfH = 1024.0;
-    return cc.p(480 + (x / baseHalfW) * 480, 270 + (y / baseHalfH) * 270);
+    var baseHalfH = 768.0;
+    var targetHalfW = 480.0;
+    var targetHalfH = 270.0;
+    return cc.p(480 + (x / baseHalfW) * targetHalfW, 270 + (y / baseHalfH) * targetHalfH);
   },
 
   _buildUI: function(){

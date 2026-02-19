@@ -792,7 +792,7 @@ var SlotScene = cc.Scene.extend({
     if (fn) {
       var texPath = "res/assets/symbols/" + fn;
       try { sprite.setTexture(texPath); } catch(e) {}
-      this._fitToBox(sprite, 90, 64);
+      this._fitToBox(sprite, 108, 86);
       sprite._baseScale = sprite.getScale();
       sprite.setVisible(true);
     } else {
@@ -919,12 +919,14 @@ var SlotScene = cc.Scene.extend({
     var self = this;
 
     var balance = new cc.LabelTTF("", "Arial", 18);
+    balance.setColor(cc.color(255, 215, 0));
     balance.setAnchorPoint(0, 0.5);
     balance.setPosition(20, 490);
     this.uiLayer.addChild(balance);
     this.ui.balance = balance;
 
     var bet = new cc.LabelTTF("", "Arial", 18);
+    bet.setColor(cc.color(255, 215, 0));
     bet.setAnchorPoint(1, 0.5);
     bet.setPosition(940, 490);
     this.uiLayer.addChild(bet);
@@ -959,11 +961,11 @@ var SlotScene = cc.Scene.extend({
     var speedAnchor = cc.p(825, 126);
     var betAnchor  = cc.p(895, 126);
     var autoAnchor = cc.p(860, 72);
-    var popupAnchor = cc.p(420, 166);
+    var popupAnchor = cc.p(420, 188);
 
     this.ui.spinButtonsPanel = new cc.Node();
     this.ui.spinButtonsPanel.setPosition(spinAnchor);
-    this.ui.spinButtonsPanel.setScale(0.55);
+    this.ui.spinButtonsPanel.setScale(0.50);
     this.uiLayer.addChild(this.ui.spinButtonsPanel);
 
     this.ui.spinBtn = this._makeImageButton(0, 0, I18N.t("spin","SPIN"), function(){
@@ -997,7 +999,7 @@ var SlotScene = cc.Scene.extend({
       on:["btn_speed_on","btn_speed_quick_on","btn_quick_on","btn_speed"],
       off:["btn_speed_off","btn_speed_quick_off","btn_quick_off","btn_speed"]
     }, 125, 125);
-    this.ui.speedModeButton.setScale(0.55);
+    this.ui.speedModeButton.setScale(0.60);
     this.uiLayer.addChild(this.ui.speedModeButton);
 
     this.ui.betPanelButton = this._makeImageButton(betAnchor.x, betAnchor.y, "BET", function(){
@@ -1008,12 +1010,12 @@ var SlotScene = cc.Scene.extend({
       on:["btn_bet_on","btn_bet"],
       off:["btn_bet_off","btn_bet"]
     }, 125, 125);
-    this.ui.betPanelButton.setScale(0.55);
+    this.ui.betPanelButton.setScale(0.60);
     this.uiLayer.addChild(this.ui.betPanelButton);
 
     this.ui.autoSpinPanel = new cc.Node();
     this.ui.autoSpinPanel.setPosition(autoAnchor);
-    this.ui.autoSpinPanel.setScale(0.55);
+    this.ui.autoSpinPanel.setScale(0.60);
     this.uiLayer.addChild(this.ui.autoSpinPanel);
 
     this.ui.autoButton = this._makeImageButton(0, 0, "AUTO", function(){
@@ -1039,7 +1041,7 @@ var SlotScene = cc.Scene.extend({
 
     this.ui.betInfoPanel = new cc.Node();
     this.ui.betInfoPanel.setPosition(popupAnchor);
-    this.ui.betInfoPanel.setScale(0.58);
+    this.ui.betInfoPanel.setScale(0.58 * 2.0);
     this.uiLayer.addChild(this.ui.betInfoPanel, 200);
     this.ui.betInfoPanel.setVisible(false);
 
@@ -1047,11 +1049,13 @@ var SlotScene = cc.Scene.extend({
     if (betBgPath) {
       var betBg = new cc.Sprite(betBgPath);
       betBg.setPosition(538, -290);
-      this._fitSpriteTo(betBg, 1100, 476, false);
+      this._fitSpriteTo(betBg, 2200, 476, false);
+      betBg.setOpacity(235);
       this.ui.betInfoPanel.addChild(betBg);
     }
 
     this.ui.betHeader = new cc.LabelTTF("BET LEVEL", "Arial", 30);
+    this.ui.betHeader.setColor(cc.color(255, 215, 0));
     this.ui.betHeader.setPosition(538, -1040);
     this.ui.betInfoPanel.addChild(this.ui.betHeader);
 
@@ -1068,12 +1072,13 @@ var SlotScene = cc.Scene.extend({
     this.ui.betPanelMaxBtn = this._makeImageButton(540, -1580, "MAX", function(){ self.onSetMaxBetClick(); }, { normal:["btn_auto_amt","btn_bet_max"], on:["btn_auto_amt_on","btn_bet_max","btn_auto_amt"], off:["btn_auto_amt","btn_bet_max"], hideLabelWhenTextured:false }, 208, 82);
     this.ui.betButtons.addChild(this.ui.betPanelMaxBtn);
     this.ui.betPanelText = new cc.LabelTTF("", "Arial", 19);
+    this.ui.betPanelText.setColor(cc.color(255, 215, 0));
     this.ui.betPanelText.setPosition(540, -1260);
     this.ui.betButtons.addChild(this.ui.betPanelText);
 
     this.ui.autoPanelInfo = new cc.Node();
     this.ui.autoPanelInfo.setPosition(popupAnchor);
-    this.ui.autoPanelInfo.setScale(0.58);
+    this.ui.autoPanelInfo.setScale(0.62);
     this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
     this.ui.autoPanelInfo.setVisible(false);
 
@@ -1083,6 +1088,7 @@ var SlotScene = cc.Scene.extend({
       autoBg.setPosition(530, 142.632);
       autoBg.setAnchorPoint(0.5, 1);
       this._fitSpriteTo(autoBg, 1100, 667.7, false);
+      autoBg.setOpacity(235);
       this.ui.autoPanelInfo.addChild(autoBg);
     }
 
@@ -1094,11 +1100,13 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoButtonContainer.addChild(this.ui.autoPanelCloseButton);
 
     this.ui.autoPlayHeader = new cc.LabelTTF("AUTO PLAY", "Arial", 32);
-    this.ui.autoPlayHeader.setPosition(538, -980);
+    this.ui.autoPlayHeader.setColor(cc.color(255, 215, 0));
+    this.ui.autoPlayHeader.setPosition(538, -930);
     this.ui.autoButtonContainer.addChild(this.ui.autoPlayHeader);
 
     this.ui.autoCountLabel = new cc.LabelTTF("Auto count: 0", "Arial", 18);
-    this.ui.autoCountLabel.setPosition(538, -1188);
+    this.ui.autoCountLabel.setColor(cc.color(255, 215, 0));
+    this.ui.autoCountLabel.setPosition(538, -1140);
     this.ui.autoButtonContainer.addChild(this.ui.autoCountLabel);
 
     this.ui.autoBtnContainer = new cc.Node();
@@ -1107,12 +1115,12 @@ var SlotScene = cc.Scene.extend({
 
     var counts = [20, 50, 100, 200, 500, 1000];
     var pos = {
-      20:[-258.299, -69.276],
-      50:[-4.016, -69.276],
-      100:[252.409, -69.276],
-      200:[-258.299, 71.417],
-      500:[-4.016, 71.417],
-      1000:[252.409, 71.417]
+      20:[-320, -69.276],
+      50:[-10, -69.276],
+      100:[300, -69.276],
+      200:[-320, 71.417],
+      500:[-10, 71.417],
+      1000:[300, 71.417]
     };
     this.ui.autoCountButtons = [];
     for (var ci=0; ci<counts.length; ci++) {
@@ -1125,20 +1133,20 @@ var SlotScene = cc.Scene.extend({
       })(ci);
     }
 
-    this.ui.btnQuickSpin = this._makeImageButton(702.043, -1100.331, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 210, 125);
+    this.ui.btnQuickSpin = this._makeImageButton(702.043, -1100.331, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_on","btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_on","btn_quick_off","btn_speed_quick"] }, 225, 132);
     this.ui.autoButtonContainer.addChild(this.ui.btnQuickSpin);
-    this.ui.quickLabel = new cc.LabelTTF("QUICK\nSPIN", "Arial", 20, cc.size(95.01, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
+    this.ui.quickLabel = new cc.LabelTTF("FAST\nSPIN", "Arial", 20, cc.size(95.01, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
     this.ui.quickLabel.setAnchorPoint(0.5, 0.5);
     this.ui.quickLabel.setPosition(134.128, 4.286);
     this.ui.btnQuickSpin.addChild(this.ui.quickLabel, 5);
 
-    this.ui.btnTurboSpin = this._makeImageButton(239.246, -1100.331, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 210, 125);
+    this.ui.btnTurboSpin = this._makeImageButton(239.246, -1100.331, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo","btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo","btn_turbo_off","btn_speed_turbo"] }, 225, 132);
     this.ui.autoButtonContainer.addChild(this.ui.btnTurboSpin);
     this.ui.turboLabel = new cc.LabelTTF("TURBO\nSPIN", "Arial", 20, cc.size(105, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
     this.ui.turboLabel.setAnchorPoint(0.5, 0.5);
     this.ui.turboLabel.setPosition(134.128, 4.286);
     this.ui.btnTurboSpin.addChild(this.ui.turboLabel, 5);
-    this.ui.btnAutoSpin = this._makeImageButton(427.071, -1443.775, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 210, 210);
+    this.ui.btnAutoSpin = this._makeImageButton(427.071, -1443.775, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 225, 225);
     this.ui.autoButtonContainer.addChild(this.ui.btnAutoSpin);
 
     // Settings / info controls (top-right) so audio + help are always available.
@@ -1394,7 +1402,7 @@ var SlotScene = cc.Scene.extend({
     node.addChild(bg, 1);
     node._bg = bg;
 
-    var txt = new cc.LabelTTF(label, "Arial", Math.max(14, Math.floor(h*0.45)));
+    var txt = new cc.LabelTTF(label, "Arial", Math.max(14, Math.floor(h*0.40)));
     txt.setPosition(0,0);
     node.addChild(txt);
     node._label = txt;
@@ -1463,19 +1471,19 @@ var SlotScene = cc.Scene.extend({
     var rows  = SlotModel.cfg.math.row_count;
 
     // Layout that stays aligned for any 3..7 reels and 3..6 rows
-    var cellW = 120;
-    var cellH = 90;
+    var cellW = 132;
+    var cellH = 102;
 
     // auto-fit keeps grid clear of bottom controls
-    if (rows >= 4) cellH = 82;
-    if (rows >= 5) cellH = 74;
-    if (rows >= 6) cellH = 66;
+    if (rows >= 4) cellH = 92;
+    if (rows >= 5) cellH = 82;
+    if (rows >= 6) cellH = 74;
 
     var frameW = Math.floor(cellW * 0.9);
     var frameH = Math.floor(cellH * 0.86);
 
     var startX = 480 - ((reels - 1) * cellW) / 2;
-    var startY = 300 - ((rows - 1) * cellH) / 2;
+    var startY = 324 - ((rows - 1) * cellH) / 2;
 
     this._cellW = cellW;
     this._cellH = cellH;
@@ -1500,10 +1508,19 @@ var SlotScene = cc.Scene.extend({
         this.gridLayer.addChild(holder, 5);
 
         // Keep slots fully transparent so selected background is clean (no matrix overlay).
-        var frame = new cc.LayerColor(cc.color(18,26,48,0), frameW, frameH);
-        if (frame.setIgnoreAnchorPointForPosition) frame.setIgnoreAnchorPointForPosition(false);
-        frame.setPosition(-frameW/2, -frameH/2);
-        holder.addChild(frame, 1);
+        var framePath = this._uiAsset(["reel_frame","frame_reel","reels_frame"]);
+        var frame = null;
+        if (framePath) {
+          frame = new cc.Sprite(framePath);
+          frame.setPosition(0, 0);
+          this._fitSpriteTo(frame, Math.floor(frameW * 1.05), Math.floor(frameH * 1.05), false);
+          holder.addChild(frame, 12);
+        } else {
+          frame = new cc.LayerColor(cc.color(18,26,48,0), frameW, frameH);
+          if (frame.setIgnoreAnchorPointForPosition) frame.setIgnoreAnchorPointForPosition(false);
+          frame.setPosition(-frameW/2, -frameH/2);
+          holder.addChild(frame, 1);
+        }
 
         var label = new cc.LabelTTF("?", "Arial", 20);
         label.setPosition(0,0);

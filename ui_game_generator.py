@@ -328,6 +328,20 @@ def _step_assets() -> None:
     st.markdown("### Extra UI images (optional)")
     st.file_uploader("UI images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, key="ui_uploads")
 
+    st.markdown("### Reel frame image (optional)")
+    st.caption("Upload a dedicated reel-frame image. It will be packaged as `reel_frame.<ext>` for the generated UI.")
+    st.file_uploader("Reel frame image", type=["png","jpg","jpeg","webp"], key="reel_frame_upload")
+    reel_frame = st.session_state.get("reel_frame_upload")
+    if reel_frame is not None:
+        st.session_state["reel_frame_name"] = str(getattr(reel_frame, "name", "reel_frame.png"))
+        st.session_state["reel_frame_bytes"] = bytes(reel_frame.getvalue())
+
+    rf_name = st.session_state.get("reel_frame_name")
+    rf_bytes = st.session_state.get("reel_frame_bytes")
+    if rf_name and rf_bytes:
+        st.success(f"Reel frame selected: {rf_name}")
+        st.image(rf_bytes, caption=f"Selected reel frame preview: {rf_name}", use_container_width=True)
+
 
 def _step_localization() -> None:
     st.text_input("Languages (comma separated)", "en", key="langs_txt")
@@ -682,7 +696,11 @@ def _step_build() -> None:
 
     # uploads
     symbol_uploads_named = st.session_state.get("symbol_uploads_named", [])
-    ui_uploads = st.session_state.get("ui_uploads") or []
+    ui_uploads = list(st.session_state.get("ui_uploads") or [])
+    if st.session_state.get("reel_frame_name") and st.session_state.get("reel_frame_bytes"):
+        rf_name = str(st.session_state.get("reel_frame_name", "reel_frame.png"))
+        rf_ext = Path(rf_name).suffix or ".png"
+        ui_uploads.append(_MemoryUpload(name=f"reel_frame{rf_ext}", data=bytes(st.session_state["reel_frame_bytes"])))
     background_upload = st.session_state.get("bg_upload")
     # Prefer persisted bytes from Assets step (stable across reruns/navigation)
     if st.session_state.get("bg_upload_name") and st.session_state.get("bg_upload_bytes"):

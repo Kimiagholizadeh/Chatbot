@@ -989,7 +989,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.spinButtonsPanel.addChild(this.ui.stopBtn);
     this.ui.stopBtn.setVisible(false);
 
-    this.ui.speedModeButton = this._makeImageButton(speedAnchor.x, speedAnchor.y, "SPEED", function(){
+    this.ui.speedModeButton = this._makeImageButton(speedAnchor.x, speedAnchor.y, "", function(){
       self._unlockAudioOnce();
       self.onSpeedModeButtonClick();
     }, {
@@ -1127,14 +1127,16 @@ var SlotScene = cc.Scene.extend({
 
     this.ui.btnQuickSpin = this._makeImageButton(702.043, -1100.331, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 210, 125);
     this.ui.autoButtonContainer.addChild(this.ui.btnQuickSpin);
-    this.ui.quickLabel = new cc.LabelTTF("QUICK\nSPIN", "Arial", 20, cc.size(95.01, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
+    this.ui.quickLabel = new cc.LabelTTF("", "Arial", 20, cc.size(95.01, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
+    this.ui.quickLabel.setVisible(false);
     this.ui.quickLabel.setAnchorPoint(0.5, 0.5);
     this.ui.quickLabel.setPosition(134.128, 4.286);
     this.ui.btnQuickSpin.addChild(this.ui.quickLabel, 5);
 
     this.ui.btnTurboSpin = this._makeImageButton(239.246, -1100.331, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 210, 125);
     this.ui.autoButtonContainer.addChild(this.ui.btnTurboSpin);
-    this.ui.turboLabel = new cc.LabelTTF("TURBO\nSPIN", "Arial", 20, cc.size(105, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
+    this.ui.turboLabel = new cc.LabelTTF("", "Arial", 20, cc.size(105, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
+    this.ui.turboLabel.setVisible(false);
     this.ui.turboLabel.setAnchorPoint(0.5, 0.5);
     this.ui.turboLabel.setPosition(134.128, 4.286);
     this.ui.btnTurboSpin.addChild(this.ui.turboLabel, 5);
@@ -1417,24 +1419,45 @@ var SlotScene = cc.Scene.extend({
     node.addChild(txt);
     node._label = txt;
 
+    var isNodeVisibleInHierarchy = function(target){
+      var cur = target;
+      while (cur) {
+        if (!cur.isVisible || !cur.isVisible()) return false;
+        cur = cur.getParent ? cur.getParent() : null;
+      }
+      return true;
+    };
+
+    node._pressedInside = false;
+
     cc.eventManager.addListener({
       event: cc.EventListener.TOUCH_ONE_BY_ONE,
       swallowTouches: true,
       onTouchBegan: function(t){
-        if (!node.isVisible || !node.isVisible()) return false;
+        if (!isNodeVisibleInHierarchy(node)) return false;
         if (node._disabled) return false;
         var p = node.convertToNodeSpace(t.getLocation());
         var s = node.getContentSize();
         var r = cc.rect(-s.width/2, -s.height/2, s.width, s.height);
         var hit = cc.rectContainsPoint(r, p);
+        node._pressedInside = hit;
         if (hit && node._setState) node._setState("on");
         return hit;
       },
-      onTouchEnded: function(){
+      onTouchEnded: function(t){
+        var shouldClick = false;
+        if (node._pressedInside && !node._disabled && isNodeVisibleInHierarchy(node)) {
+          var p = node.convertToNodeSpace(t.getLocation());
+          var s = node.getContentSize();
+          var r = cc.rect(-s.width/2, -s.height/2, s.width, s.height);
+          shouldClick = cc.rectContainsPoint(r, p);
+        }
+        node._pressedInside = false;
         if (node._setState) node._setState(node._disabled ? "off" : "normal");
-        if (onClick && !node._disabled) onClick();
+        if (shouldClick && onClick) onClick();
       },
       onTouchCancelled: function(){
+        node._pressedInside = false;
         if (node._setState) node._setState(node._disabled ? "off" : "normal");
       }
     }, node);
@@ -1444,7 +1467,7 @@ var SlotScene = cc.Scene.extend({
       cc.eventManager.addListener({
         event: cc.EventListener.MOUSE,
         onMouseMove: function(e){
-          if (!node.isVisible || !node.isVisible()) return;
+          if (!isNodeVisibleInHierarchy(node)) return;
           var p = node.convertToNodeSpace(e.getLocation());
           var s = node.getContentSize();
           var r = cc.rect(-s.width/2, -s.height/2, s.width, s.height);

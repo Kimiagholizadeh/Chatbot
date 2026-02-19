@@ -957,7 +957,7 @@ var SlotScene = cc.Scene.extend({
     var spinAnchor = this._fromBaseLandscape(1189, -384);
     var autoAnchor = this._fromBaseLandscape(1233, -634);
     var betAnchor  = this._fromBaseLandscape(1276, -546);
-    var speedAnchor = this._fromBaseLandscape(1189, -546);
+    var speedAnchor = this._fromBaseLandscape(1187, -546);
     var popupAnchor = this._fromBaseLandscape(320, -335);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -1103,17 +1103,17 @@ var SlotScene = cc.Scene.extend({
 
     this.ui.btnQuickSpin = this._makeImageButton(702.043, -1100.331, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 210, 125);
     this.ui.autoButtonContainer.addChild(this.ui.btnQuickSpin);
-    this.ui.quickLabel = new cc.LabelTTF("QUICK\nSPIN", "Arial", 20);
-    this.ui.quickLabel.setAnchorPoint(0, 0.5);
-    this.ui.quickLabel.setPosition(810, -1100.331);
-    this.ui.autoButtonContainer.addChild(this.ui.quickLabel);
+    this.ui.quickLabel = new cc.LabelTTF("QUICK\nSPIN", "Arial", 20, cc.size(95.01, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
+    this.ui.quickLabel.setAnchorPoint(0.5, 0.5);
+    this.ui.quickLabel.setPosition(134.128, 4.286);
+    this.ui.btnQuickSpin.addChild(this.ui.quickLabel, 5);
 
     this.ui.btnTurboSpin = this._makeImageButton(239.246, -1100.331, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 210, 125);
     this.ui.autoButtonContainer.addChild(this.ui.btnTurboSpin);
-    this.ui.turboLabel = new cc.LabelTTF("TURBO\nSPIN", "Arial", 20);
-    this.ui.turboLabel.setAnchorPoint(0, 0.5);
-    this.ui.turboLabel.setPosition(347, -1100.331);
-    this.ui.autoButtonContainer.addChild(this.ui.turboLabel);
+    this.ui.turboLabel = new cc.LabelTTF("TURBO\nSPIN", "Arial", 20, cc.size(105, 67.8), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_CENTER);
+    this.ui.turboLabel.setAnchorPoint(0.5, 0.5);
+    this.ui.turboLabel.setPosition(134.128, 4.286);
+    this.ui.btnTurboSpin.addChild(this.ui.turboLabel, 5);
     this.ui.btnAutoSpin = this._makeImageButton(427.071, -1443.775, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 210, 210);
     this.ui.autoButtonContainer.addChild(this.ui.btnAutoSpin);
 

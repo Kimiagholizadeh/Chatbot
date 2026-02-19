@@ -1040,7 +1040,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.betInfoPanel = new cc.Node();
     this.ui.betInfoPanel.setPosition(popupAnchor);
     this.ui.betInfoPanel.setScale(0.58);
-    this.uiLayer.addChild(this.ui.betInfoPanel, 200);
+    this.uiLayer.addChild(this.ui.betInfoPanel, 400);
     this.ui.betInfoPanel.setVisible(false);
 
     var betBgPath = this._uiAsset(["bet_popup_panel_bg","popup_panel_bg","auto_popup_panel","auto_panel"]);
@@ -1074,7 +1074,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoPanelInfo = new cc.Node();
     this.ui.autoPanelInfo.setPosition(popupAnchor);
     this.ui.autoPanelInfo.setScale(0.58);
-    this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
+    this.uiLayer.addChild(this.ui.autoPanelInfo, 400);
     this.ui.autoPanelInfo.setVisible(false);
 
     var autoBgPath = this._uiAsset(["popup_panel_bg","auto_popup_panel","bet_popup_panel","auto_panel"]);
@@ -1229,7 +1229,15 @@ var SlotScene = cc.Scene.extend({
     if (this.ui.stopBtn) this.ui.stopBtn.setVisible(!!spinning);
   },
 
-  onSpinButtonClick: function(){ this._onSpin(); },
+  _recoverIfStalled: function(){
+    if (this.busy && !this._spinActive) {
+      this.busy = false;
+      this._setSpinButtonsState(false);
+      this._refreshControlStates();
+    }
+  },
+
+  onSpinButtonClick: function(){ this._recoverIfStalled(); this._onSpin(); },
 
   onStopButtonClick: function(){
     if (!this.busy) return;
@@ -1238,7 +1246,8 @@ var SlotScene = cc.Scene.extend({
   },
 
   onOpenBetPanelClick: function(){
-    if (this.busy) return;
+    this._recoverIfStalled();
+    if (this.busy && this._spinActive) return;
     this._closeAutoPanel(true);
     this._betPanelOpen = true;
     if (this.ui && this.ui.betInfoPanel) this.ui.betInfoPanel.setVisible(true);
@@ -1293,7 +1302,8 @@ var SlotScene = cc.Scene.extend({
   },
 
   onOpenAutoPanelClick: function(){
-    if (this.busy) return;
+    this._recoverIfStalled();
+    if (this.busy && this._spinActive) return;
     this._closeBetPanel(true);
     this._autoPanelOpen = true;
     if (this.ui && this.ui.autoPanelInfo) this.ui.autoPanelInfo.setVisible(true);

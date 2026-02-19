@@ -79,3 +79,22 @@ rg -n "spin|bet|payline|menu|help|free|bonus|reel" "$env:PONGGAMECORE_ROOT/asset
 5. Keep `.meta` pairs for all copied Creator assets.
 
 This is exactly the pattern implemented by the current **PGS Base Package** + **PGS Configurable Package** modes.
+
+## 4) Compare dashboard locations across games (new helper)
+
+Use `dashboard_compare.py` to extract and compare node positions/sizes from two dashboard prefabs.
+
+Examples:
+```bash
+# Print key node positions from one prefab
+python dashboard_compare.py /path/to/gameA/dashboard.prefab
+
+# Compare game A vs game B and see deltas
+python dashboard_compare.py /path/to/gameA/dashboard.prefab /path/to/gameB/dashboard.prefab
+```
+
+You can override nodes list:
+```bash
+python dashboard_compare.py gameA.prefab gameB.prefab \
+  --nodes "spinButton,stopButton,betPanelButton,autoButton,btnAutoSpin,20Btn,50Btn,100Btn"
+```

@@ -956,14 +956,14 @@ var SlotScene = cc.Scene.extend({
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
     var spinAnchor = cc.p(860, 218);
-    var speedAnchor = cc.p(815, 126);
-    var betAnchor  = cc.p(905, 126);
-    var autoAnchor = cc.p(860, 40);
+    var speedAnchor = cc.p(825, 126);
+    var betAnchor  = cc.p(895, 126);
+    var autoAnchor = cc.p(860, 72);
     var popupAnchor = cc.p(420, 166);
 
     this.ui.spinButtonsPanel = new cc.Node();
     this.ui.spinButtonsPanel.setPosition(spinAnchor);
-    this.ui.spinButtonsPanel.setScale(0.58);
+    this.ui.spinButtonsPanel.setScale(0.55);
     this.uiLayer.addChild(this.ui.spinButtonsPanel);
 
     this.ui.spinBtn = this._makeImageButton(0, 0, I18N.t("spin","SPIN"), function(){
@@ -997,7 +997,7 @@ var SlotScene = cc.Scene.extend({
       on:["btn_speed_on","btn_speed_quick_on","btn_quick_on","btn_speed"],
       off:["btn_speed_off","btn_speed_quick_off","btn_quick_off","btn_speed"]
     }, 125, 125);
-    this.ui.speedModeButton.setScale(0.58);
+    this.ui.speedModeButton.setScale(0.55);
     this.uiLayer.addChild(this.ui.speedModeButton);
 
     this.ui.betPanelButton = this._makeImageButton(betAnchor.x, betAnchor.y, "BET", function(){
@@ -1008,12 +1008,12 @@ var SlotScene = cc.Scene.extend({
       on:["btn_bet_on","btn_bet"],
       off:["btn_bet_off","btn_bet"]
     }, 125, 125);
-    this.ui.betPanelButton.setScale(0.58);
+    this.ui.betPanelButton.setScale(0.55);
     this.uiLayer.addChild(this.ui.betPanelButton);
 
     this.ui.autoSpinPanel = new cc.Node();
     this.ui.autoSpinPanel.setPosition(autoAnchor);
-    this.ui.autoSpinPanel.setScale(0.58);
+    this.ui.autoSpinPanel.setScale(0.55);
     this.uiLayer.addChild(this.ui.autoSpinPanel);
 
     this.ui.autoButton = this._makeImageButton(0, 0, "AUTO", function(){
@@ -1709,6 +1709,7 @@ var SlotScene = cc.Scene.extend({
 
     // Spin then land exactly on res.grid (no symbol swapping after stop)
     this._startSpinAnimation(spinSec, res.grid, function(){
+      try {
       self._renderGrid(res.grid);
 
       var fsStarted = (!res.inFreeSpins && res.freeSpinsRemaining > 0);
@@ -1775,6 +1776,13 @@ var SlotScene = cc.Scene.extend({
 
         if (fsAwarded > 0) self._showFreeSpinIntro(function(){ queueAutoSpin(0.20); });
         else queueAutoSpin(self._spinMode === "turbo" ? 0.12 : 0.25);
+      }
+      } catch (spinErr) {
+        self._setMessage("Spin flow recovered");
+        self.busy = false;
+        self._spinActive = false;
+        self._setSpinButtonsState(false);
+        self._refreshControlStates();
       }
     });
   },
@@ -1852,6 +1860,7 @@ var SlotScene = cc.Scene.extend({
     }
 
     var tick = function(dt){
+      try {
       if (!self._spinActive) return;
       self._spinElapsed += dt;
 
@@ -1950,6 +1959,14 @@ var SlotScene = cc.Scene.extend({
         }
 
         if (onDone) onDone();
+      }
+      } catch (tickErr) {
+        self._spinActive = false;
+        if (typeof self.unschedule === "function") self.unschedule(tick);
+        self.busy = false;
+        self._setSpinButtonsState(false);
+        self._refreshControlStates();
+        self._setMessage("Recovered from spin error");
       }
     };
 

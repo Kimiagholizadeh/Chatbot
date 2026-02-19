@@ -687,10 +687,6 @@ var SlotScene = cc.Scene.extend({
     this._bgNode = new cc.LayerColor(cc.color(11,16,32,255), 960, 540);
     this.addChild(this._bgNode, 0);
 
-    var title = new cc.LabelTTF("Slot Maker Engine", "Arial", 22);
-    title.setPosition(480, 520);
-    this._title = title;
-    this.addChild(title, 1);
 
     this.gridLayer = new cc.Node();
     this.addChild(this.gridLayer, 2);
@@ -699,12 +695,6 @@ var SlotScene = cc.Scene.extend({
     this.addChild(this.uiLayer, 50);
 
     SlotModel.initFromFiles(function(){
-      try {
-        if (self._title && SlotModel.cfg && SlotModel.cfg.identity && SlotModel.cfg.identity.display_name) {
-          self._title.setString(String(SlotModel.cfg.identity.display_name));
-        }
-      } catch (eTitle) {}
-
       // Respect wizard-configured dimensions from game_config.json
       try { SlotModel.setDimensions(SlotModel.cfg.math.reel_count || 5, SlotModel.cfg.math.row_count || 4); } catch (e) {}
 
@@ -939,35 +929,41 @@ var SlotScene = cc.Scene.extend({
     balance.setPosition(20, 490);
     this.uiLayer.addChild(balance);
     this.ui.balance = balance;
+    this.ui.balance.setVisible(false);
 
     var bet = new cc.LabelTTF("", "Arial", 18);
     bet.setAnchorPoint(1, 0.5);
     bet.setPosition(940, 490);
     this.uiLayer.addChild(bet);
     this.ui.bet = bet;
+    this.ui.bet.setVisible(false);
 
     var fs = new cc.LabelTTF("", "Arial", 18);
     fs.setAnchorPoint(0.5, 0.5);
     fs.setPosition(480, 490);
     this.uiLayer.addChild(fs);
     this.ui.fs = fs;
+    this.ui.fs.setVisible(false);
 
     var msg = new cc.LabelTTF("", "Arial", 18);
     msg.setPosition(480, 60);
     this.uiLayer.addChild(msg);
     this.ui.msg = msg;
+    this.ui.msg.setVisible(false);
 
     var paylineInfo = new cc.LabelTTF("", "Arial", 14);
     paylineInfo.setAnchorPoint(0, 1);
     paylineInfo.setPosition(20, 455);
     this.uiLayer.addChild(paylineInfo);
     this.ui.paylineInfo = paylineInfo;
+    this.ui.paylineInfo.setVisible(false);
 
     var winBreakdown = new cc.LabelTTF("", "Arial", 13);
     winBreakdown.setAnchorPoint(1, 1);
     winBreakdown.setPosition(940, 455);
     this.uiLayer.addChild(winBreakdown);
     this.ui.winBreakdown = winBreakdown;
+    this.ui.winBreakdown.setVisible(false);
 
     var uiBarPath = this._uiAsset(["ui_bar"]);
     if (uiBarPath) {
@@ -980,22 +976,22 @@ var SlotScene = cc.Scene.extend({
 
     this.ui.balanceTitle = new cc.LabelTTF("BALANCE", "Arial", 16);
     this.ui.balanceTitle.setAnchorPoint(0, 0.5);
-    this.ui.balanceTitle.setPosition(28, 54);
+    this.ui.balanceTitle.setPosition(120, 54);
     this.uiLayer.addChild(this.ui.balanceTitle, 4);
 
     this.ui.balanceAmount = new cc.LabelTTF("", "Arial", 18);
     this.ui.balanceAmount.setAnchorPoint(0, 0.5);
-    this.ui.balanceAmount.setPosition(28, 30);
+    this.ui.balanceAmount.setPosition(120, 30);
     this.uiLayer.addChild(this.ui.balanceAmount, 4);
 
     this.ui.spinTitle = new cc.LabelTTF("SPIN", "Arial", 16);
     this.ui.spinTitle.setAnchorPoint(1, 0.5);
-    this.ui.spinTitle.setPosition(932, 54);
+    this.ui.spinTitle.setPosition(840, 54);
     this.uiLayer.addChild(this.ui.spinTitle, 4);
 
     this.ui.spinBetAmount = new cc.LabelTTF("", "Arial", 18);
     this.ui.spinBetAmount.setAnchorPoint(1, 0.5);
-    this.ui.spinBetAmount.setPosition(932, 30);
+    this.ui.spinBetAmount.setPosition(840, 30);
     this.uiLayer.addChild(this.ui.spinBetAmount, 4);
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
@@ -1004,7 +1000,7 @@ var SlotScene = cc.Scene.extend({
     var speedAnchor = cc.p(825, 126);
     var betAnchor  = cc.p(895, 126);
     var autoAnchor = cc.p(860, 72);
-    var popupCenter = cc.p(480, 180);
+    var popupCenter = cc.p(480, 140);
 
     this.ui.spinButtonsPanel = new cc.Node();
     this.ui.spinButtonsPanel.setPosition(spinAnchor);
@@ -1082,7 +1078,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoSpinPanel.addChild(this.ui.autoStopButton);
     this.ui.autoStopButton.setVisible(false);
 
-    this._betPanelSize = cc.size(420, 560);
+    this._betPanelSize = cc.size(460, 230);
     this._autoPanelSize = cc.size(520, 430);
 
     this.ui.betInfoPanel = new cc.Node();
@@ -1095,7 +1091,7 @@ var SlotScene = cc.Scene.extend({
       var betBg = new cc.Sprite(betBgPath);
       betBg.setPosition(0, 0);
       this._fitSpriteTo(betBg, this._betPanelSize.width, this._betPanelSize.height, false);
-      betBg.setOpacity(128);
+      betBg.setOpacity(204);
       this.ui.betInfoPanel.addChild(betBg);
     }
 
@@ -1103,23 +1099,23 @@ var SlotScene = cc.Scene.extend({
     if (betHeaderPanelPath) {
       var betHeaderPanel = new cc.Sprite(betHeaderPanelPath);
       betHeaderPanel.setPosition(0, 220);
-      this._fitSpriteTo(betHeaderPanel, 300, 70, false);
+      this._fitSpriteTo(betHeaderPanel, 260, 56, false);
       this.ui.betInfoPanel.addChild(betHeaderPanel, 1);
     }
 
     this.ui.betHeader = new cc.LabelTTF("PLAY LEVEL", "Arial", 30);
-    this.ui.betHeader.setPosition(0, 220);
+    this.ui.betHeader.setPosition(0, 78);
     this.ui.betInfoPanel.addChild(this.ui.betHeader, 2);
 
     this.ui.betSubHeaderLine = this._makeHorizontalLine(320, cc.color(180, 180, 180, 220));
-    this.ui.betSubHeaderLine.setPosition(0, 82);
+    this.ui.betSubHeaderLine.setPosition(0, 10);
     this.ui.betInfoPanel.addChild(this.ui.betSubHeaderLine);
 
-    this.ui.betPanel_decBet = this._makeImageButton(-120, 70, "", function(){ self.onDecreaseBetClick(); }, { normal:["btn_bet_minus"], on:["btn_bet_minus_on","btn_bet_minus"], off:["btn_bet_minus_off","btn_bet_minus"] }, 82, 82);
+    this.ui.betPanel_decBet = this._makeImageButton(-150, 10, "", function(){ self.onDecreaseBetClick(); }, { normal:["btn_bet_minus"], on:["btn_bet_minus_on","btn_bet_minus"], off:["btn_bet_minus_off","btn_bet_minus"] }, 70, 70);
     this.ui.betInfoPanel.addChild(this.ui.betPanel_decBet);
-    this.ui.betPanel_incBet = this._makeImageButton(120, 70, "", function(){ self.onIncreaseBetClick(); }, { normal:["btn_bet_plus"], on:["btn_bet_plus_on","btn_bet_plus"], off:["btn_bet_plus_off","btn_bet_plus"] }, 82, 82);
+    this.ui.betPanel_incBet = this._makeImageButton(150, 10, "", function(){ self.onIncreaseBetClick(); }, { normal:["btn_bet_plus"], on:["btn_bet_plus_on","btn_bet_plus"], off:["btn_bet_plus_off","btn_bet_plus"] }, 70, 70);
     this.ui.betInfoPanel.addChild(this.ui.betPanel_incBet);
-    this.ui.betPanelMaxBtn = this._makeImageButton(0, -130, "PLAY MAX", function(){ self.onSetMaxBetClick(); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_on"], hideLabelWhenTextured:false }, 180, 70);
+    this.ui.betPanelMaxBtn = this._makeImageButton(0, -62, "PLAY MAX", function(){ self.onSetMaxBetClick(); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_on"], hideLabelWhenTextured:false }, 180, 62);
     this.ui.betInfoPanel.addChild(this.ui.betPanelMaxBtn);
     if (this.ui.betPanelMaxBtn && this.ui.betPanelMaxBtn._label) {
       this.ui.betPanelMaxBtn._label.setColor(cc.color(255,255,255));
@@ -1138,7 +1134,7 @@ var SlotScene = cc.Scene.extend({
       this.ui.betPanelMaxBtn._setState("normal");
     }
     this.ui.betPanelText = new cc.LabelTTF("", "Arial", 24);
-    this.ui.betPanelText.setPosition(0, 82);
+    this.ui.betPanelText.setPosition(0, 10);
     this.ui.betInfoPanel.addChild(this.ui.betPanelText);
 
     this.ui.autoPanelInfo = new cc.Node();
@@ -1151,7 +1147,7 @@ var SlotScene = cc.Scene.extend({
       var autoBg = new cc.Sprite(autoBgPath);
       autoBg.setPosition(0, 0);
       this._fitSpriteTo(autoBg, this._autoPanelSize.width, this._autoPanelSize.height, false);
-      autoBg.setOpacity(128);
+      autoBg.setOpacity(204);
       this.ui.autoPanelInfo.addChild(autoBg);
     }
 
@@ -1275,6 +1271,12 @@ var SlotScene = cc.Scene.extend({
     if (h.paytable_note) lines.push("Paytable: " + h.paytable_note);
     if (h.rtp) lines.push("RTP: " + h.rtp);
     if (h.volatility) lines.push("Volatility: " + h.volatility);
+    var pls = (SlotModel && SlotModel.paylines) ? SlotModel.paylines : [];
+    if (pls && pls.length) {
+      var pp = [];
+      for (var pi=0; pi<pls.length && pi<20; pi++) pp.push("L" + (pi+1) + ": " + pls[pi].join("-"));
+      lines.push("Paylines (" + pls.length + "):\n" + pp.join("\n"));
+    }
     if (!lines.length) {
       lines.push("Spin to start.");
       lines.push("Use BET to open bet controls.");

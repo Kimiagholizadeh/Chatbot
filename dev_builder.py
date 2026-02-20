@@ -1221,13 +1221,13 @@ var SlotScene = cc.Scene.extend({
     }, 70, 70);
     this.uiLayer.addChild(this.ui.settingsButton);
 
-    this.ui.settingsOverlay = new cc.LayerColor(cc.color(6, 10, 22, 170), 960, 540);
+    this.ui.settingsOverlay = new cc.LayerColor(cc.color(6, 10, 22, 145), 960, 540);
     if (this.ui.settingsOverlay.setIgnoreAnchorPointForPosition) this.ui.settingsOverlay.setIgnoreAnchorPointForPosition(false);
     this.ui.settingsOverlay.setPosition(0, 0);
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 236, 186, 540, ["popup_panel_bg","auto_panel"]);
+    this.ui.settingsPanel = this._makePanel(480, 270, 240, 510, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1258,44 +1258,42 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 170, "", function(){
+    this.ui.volumeButton = this._makeImageButton(0, 118, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
-      if (cur === "high") next = "mute";
-      else if (cur === "mute") next = "low";
-      else if (cur === "low") next = "med";
-      else next = "high";
+      if (cur === "mute") next = "high";
+      else next = "mute";
       self._applyVolumeMode(next);
       self._refreshVolumeButtonSkin();
     }, {
       normal:["btn_vol_high"],
       on:["btn_vol_high_on","btn_vol_high"],
       off:["btn_vol_high","btn_vol_high_on"]
-    }, 92, 38);
+    }, 82, 30);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, 112, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(0, 80, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
       on:["btn_help_on","btn_help"],
       off:["btn_help","btn_help_on"]
-    }, 92, 38);
+    }, 82, 30);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, 54, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(0, 42, "SET", function(){
       self._toggleSettingsMenu(false);
-    }, 92, 34);
+    }, 82, 28);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, -4, "", function(){
+    this.ui.settingsCloseButton = this._makeImageButton(0, 6, "", function(){
       self._toggleSettingsMenu(false);
     }, {
       normal:["btn_menu_close"],
       on:["btn_menu_close_on","btn_menu_close"],
       off:["btn_menu_close_off","btn_menu_close"]
-    }, 92, 38);
+    }, 82, 30);
     this.ui.settingsPanel.addChild(this.ui.settingsCloseButton, 2);
 
     this._applyVolumeMode("high");
@@ -1323,7 +1321,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(186, 540));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(240, 510));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;
@@ -1821,10 +1819,10 @@ var SlotScene = cc.Scene.extend({
       if (cc.ClippingNode && cc.DrawNode) {
         try {
           var stencil = new cc.DrawNode();
-          var clipL = -frameW * 0.68;
-          var clipR = frameW * 0.68;
-          var clipB = -frameH * 0.50;
-          var clipT = (rows - 1) * cellH + frameH * 0.50;
+          var clipL = -frameW * 0.50;
+          var clipR = frameW * 0.50;
+          var clipB = -frameH * 0.42;
+          var clipT = (rows - 1) * cellH + frameH * 0.42;
           stencil.drawRect(cc.p(clipL, clipB), cc.p(clipR, clipT), cc.color(255,255,255,255), 0, cc.color(255,255,255,255));
 
           var clipNode = new cc.ClippingNode(stencil);

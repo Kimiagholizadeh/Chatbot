@@ -1233,7 +1233,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 190, 210, 280, ["popup_panel_bg","auto_panel"], true);
+    this.ui.settingsPanel = this._makePanel(64, 182, 210, 240, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1377,7 +1377,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(210, 280));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(210, 240));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;

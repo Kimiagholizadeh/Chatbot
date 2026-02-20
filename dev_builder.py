@@ -1238,7 +1238,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.settingsPanel.setVisible(false);
 
     // Static bottom ribbon under the menu popup (from left edge to popup edge).
-    this.ui.menuRibbon = this._makePanel(480, 44, 980, 88, ["popup_panel_bg","auto_panel"], true);
+    this.ui.menuRibbon = this._makePanel(480, 31, 960, 62, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.menuRibbon, 1);
 
     this._applyVolumeMode = function(mode){

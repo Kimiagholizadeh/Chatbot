@@ -1003,8 +1003,8 @@ var SlotScene = cc.Scene.extend({
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
     var spinAnchor = cc.p(886, 210);
-    var speedAnchor = cc.p(850, 122);
-    var betAnchor  = cc.p(922, 122);
+    var speedAnchor = cc.p(858, 122);
+    var betAnchor  = cc.p(912, 122);
     var autoAnchor = cc.p(888, 64);
     var popupCenter = cc.p(480, 165);
 
@@ -1500,6 +1500,7 @@ var SlotScene = cc.Scene.extend({
 
   onSpeedModeButtonClick: function(){
     var mode = this._spinMode || "normal";
+    // Cycle order requested: NORMAL -> QUICK -> TURBO -> NORMAL
     if (mode === "normal") this.setSpinMode("quick");
     else if (mode === "quick") this.setSpinMode("turbo");
     else this.setSpinMode("normal");
@@ -1673,8 +1674,10 @@ var SlotScene = cc.Scene.extend({
       var gridCenterY = startY + ((rows - 1) * cellH) / 2;
       gridFrame.setPosition(gridCenterX, gridCenterY);
       // Add generous padding so frame encloses spinning/landing motion across all reel counts.
-      var gridCoverW = ((reels - 1) * cellW + frameW) + 150;
-      var gridCoverH = ((rows - 1) * cellH + frameH) + 118;
+      var framePadX = Math.max(22, Math.floor(cellW * 0.36));
+      var framePadY = Math.max(20, Math.floor(cellH * 0.34));
+      var gridCoverW = ((reels - 1) * cellW + frameW) + framePadX * 2;
+      var gridCoverH = ((rows - 1) * cellH + frameH) + framePadY * 2;
       this._fitSpriteTo(gridFrame, gridCoverW, gridCoverH, false);
       this.gridLayer.addChild(gridFrame, 1);
 
@@ -1967,9 +1970,9 @@ var SlotScene = cc.Scene.extend({
 
     if (!this._muted) { try { Audio.play("spin"); } catch(e){} }
 
-    var spinSec = 3.6;
-    if (this._spinMode === "quick") spinSec = 2.4;
-    if (this._spinMode === "turbo") spinSec = 1.8;
+    var spinSec = 3.0;
+    if (this._spinMode === "quick") spinSec = 1.8;
+    if (this._spinMode === "turbo") spinSec = 1.0;
 
     // Spin then land exactly on res.grid (no symbol swapping after stop)
     var safeGrid = this._normalizeGridForSpin(res && res.grid ? res.grid : null);

@@ -1225,7 +1225,7 @@ var SlotScene = cc.Scene.extend({
       on:["btn_menu_on","btn_menu"],
       off:["btn_menu_off","btn_menu"]
     }, 60, 60);
-    this.uiLayer.addChild(this.ui.settingsButton);
+    this.uiLayer.addChild(this.ui.settingsButton, 6);
 
     this.ui.settingsOverlay = new cc.LayerColor(cc.color(6, 10, 22, 145), 960, 540);
     if (this.ui.settingsOverlay.setIgnoreAnchorPointForPosition) this.ui.settingsOverlay.setIgnoreAnchorPointForPosition(false);
@@ -1238,7 +1238,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.settingsPanel.setVisible(false);
 
     // Static bottom ribbon under the menu popup (from left edge to popup edge).
-    this.ui.menuRibbon = this._makePanel(480, 28, 980, 56, ["popup_panel_bg","auto_panel"], true);
+    this.ui.menuRibbon = this._makePanel(480, 44, 980, 88, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.menuRibbon, 1);
 
     this._applyVolumeMode = function(mode){

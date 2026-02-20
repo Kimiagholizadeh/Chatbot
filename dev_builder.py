@@ -1082,7 +1082,8 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoSpinPanel.addChild(this.ui.autoStopButton);
     this.ui.autoStopButton.setVisible(false);
 
-    this._betPanelSize = cc.size(900, 320);
+    // Bet popup should be clearly horizontal (~2:1 width:height).
+    this._betPanelSize = cc.size(920, 460);
     this._autoPanelSize = cc.size(520, 430);
 
     this.ui.betInfoPanel = new cc.Node();
@@ -1609,20 +1610,29 @@ var SlotScene = cc.Scene.extend({
     var reels = SlotModel.cfg.math.reel_count;
     var rows  = SlotModel.cfg.math.row_count;
 
-    // Layout that stays aligned for any 3..7 reels and 3..6 rows
-    var cellW = 168;
-    var cellH = 128;
+    // Layout that stays aligned for any 3..7 reels and 3..6 rows.
+    // Keep reels larger than original while guaranteeing they stay inside the frame area.
+    var baseCellW = 166;
+    var baseCellH = 124;
 
-    // auto-fit keeps grid clear of bottom controls
-    if (rows >= 4) cellH = 112;
-    if (rows >= 5) cellH = 98;
-    if (rows >= 6) cellH = 84;
+    // Scale down automatically for larger reel/row combinations so gameplay never clips/offscreens.
+    var maxGridW = 820;
+    var maxGridH = 360;
+    var fitScaleW = maxGridW / Math.max(1, reels * baseCellW);
+    var fitScaleH = maxGridH / Math.max(1, rows * baseCellH);
+    var fitScale = Math.min(1, fitScaleW, fitScaleH);
+
+    var cellW = Math.floor(baseCellW * fitScale);
+    var cellH = Math.floor(baseCellH * fitScale);
+    cellW = Math.max(106, cellW);
+    cellH = Math.max(78, cellH);
 
     var frameW = Math.floor(cellW * 0.9);
     var frameH = Math.floor(cellH * 0.86);
 
     var startX = 480 - ((reels - 1) * cellW) / 2;
-    var startY = 350 - ((rows - 1) * cellH) / 2;
+    // Lift grid slightly upward from center while keeping all rows visible.
+    var startY = 300 - ((rows - 1) * cellH) / 2 + 18;
 
     this._cellW = cellW;
     this._cellH = cellH;
@@ -1632,8 +1642,11 @@ var SlotScene = cc.Scene.extend({
     var gridFramePath = this._uiAsset(["reel_frame","frame","panel_frame"]);
     if (gridFramePath) {
       var gridFrame = new cc.Sprite(gridFramePath);
-      gridFrame.setPosition(480, 300);
-      this._fitSpriteTo(gridFrame, reels * cellW + 56, rows * cellH + 52, false);
+      var gridCenterX = startX + ((reels - 1) * cellW) / 2;
+      var gridCenterY = startY + ((rows - 1) * cellH) / 2;
+      gridFrame.setPosition(gridCenterX, gridCenterY);
+      // Add generous padding so frame encloses spinning/landing motion across all reel counts.
+      this._fitSpriteTo(gridFrame, reels * cellW + 120, rows * cellH + 120, false);
       this.gridLayer.addChild(gridFrame, 1);
     }
 

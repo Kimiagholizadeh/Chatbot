@@ -1005,7 +1005,7 @@ var SlotScene = cc.Scene.extend({
     var spinAnchor = cc.p(888, 210);
     var speedAnchor = cc.p(850, 122);
     var betAnchor  = cc.p(922, 122);
-    var autoAnchor = cc.p(888, 42);
+    var autoAnchor = cc.p(888, 64);
     var popupCenter = cc.p(480, 165);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -1055,12 +1055,12 @@ var SlotScene = cc.Scene.extend({
       on:["btn_bet_on","btn_bet"],
       off:["btn_bet_off","btn_bet"]
     }, 132, 132);
-    this.ui.betPanelButton.setScale(0.5);
+    this.ui.betPanelButton.setScale(0.4);
     this.uiLayer.addChild(this.ui.betPanelButton);
 
     this.ui.autoSpinPanel = new cc.Node();
     this.ui.autoSpinPanel.setPosition(autoAnchor);
-    this.ui.autoSpinPanel.setScale(0.5);
+    this.ui.autoSpinPanel.setScale(0.4);
     this.uiLayer.addChild(this.ui.autoSpinPanel);
 
     this.ui.autoButton = this._makeImageButton(0, 0, "AUTO", function(){
@@ -1168,9 +1168,9 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoPlayHeader.setPosition(0, 178);
     this.ui.autoPanelInfo.addChild(this.ui.autoPlayHeader, 2);
 
-    this.ui.btnTurboSpin = this._makeImageButton(-125, 132, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 96, 50);
+    this.ui.btnTurboSpin = this._makeImageButton(-125, 132, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 80, 42);
     this.ui.autoPanelInfo.addChild(this.ui.btnTurboSpin);
-    this.ui.btnQuickSpin = this._makeImageButton(125, 132, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 96, 50);
+    this.ui.btnQuickSpin = this._makeImageButton(125, 132, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 80, 42);
     this.ui.autoPanelInfo.addChild(this.ui.btnQuickSpin);
 
     this.ui.autoBtnContainer = new cc.Node();
@@ -1198,7 +1198,7 @@ var SlotScene = cc.Scene.extend({
       })(ci);
     }
 
-    this.ui.btnAutoSpin = this._makeImageButton(0, -112, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 70, 70);
+    this.ui.btnAutoSpin = this._makeImageButton(0, -112, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 56, 56);
     this.ui.autoPanelInfo.addChild(this.ui.btnAutoSpin);
 
     this._registerPopupOutsideClick();
@@ -2087,7 +2087,7 @@ var SlotScene = cc.Scene.extend({
 
     var cellH = this._cellH || 90;
     var baseSpeed = 980;       // faster reel spin with more visible rounds
-    var landWindow = 0.70;     // still smooth but less floaty near stop
+    var landWindow = 0.36;     // keep reels at normal speed longer; short final decel only
     var clipTop = (rows - 1) * cellH + cellH * 0.48;
     var clipBot = -cellH * 0.48;
 

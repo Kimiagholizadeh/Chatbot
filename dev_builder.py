@@ -1000,10 +1000,10 @@ var SlotScene = cc.Scene.extend({
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
-    var spinAnchor = cc.p(860, 218);
-    var speedAnchor = cc.p(825, 126);
-    var betAnchor  = cc.p(895, 126);
-    var autoAnchor = cc.p(860, 72);
+    var spinAnchor = cc.p(914, 220);
+    var speedAnchor = cc.p(878, 134);
+    var betAnchor  = cc.p(950, 134);
+    var autoAnchor = cc.p(914, 50);
     var popupCenter = cc.p(480, 165);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -1083,7 +1083,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoStopButton.setVisible(false);
 
     // Bet popup should be clearly horizontal (~2:1 width:height).
-    this._betPanelSize = cc.size(920, 460);
+    this._betPanelSize = cc.size(840, 420);
     this._autoPanelSize = cc.size(520, 430);
 
     this.ui.betInfoPanel = new cc.Node();
@@ -1166,23 +1166,23 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoPlayHeader.setPosition(0, 178);
     this.ui.autoPanelInfo.addChild(this.ui.autoPlayHeader, 2);
 
-    this.ui.btnTurboSpin = this._makeImageButton(-125, 120, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 120, 62);
+    this.ui.btnTurboSpin = this._makeImageButton(-125, 132, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 120, 62);
     this.ui.autoPanelInfo.addChild(this.ui.btnTurboSpin);
-    this.ui.btnQuickSpin = this._makeImageButton(125, 120, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 120, 62);
+    this.ui.btnQuickSpin = this._makeImageButton(125, 132, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 120, 62);
     this.ui.autoPanelInfo.addChild(this.ui.btnQuickSpin);
 
     this.ui.autoBtnContainer = new cc.Node();
-    this.ui.autoBtnContainer.setPosition(0, 18);
+    this.ui.autoBtnContainer.setPosition(0, -2);
     this.ui.autoPanelInfo.addChild(this.ui.autoBtnContainer);
 
     var counts = [200, 500, 100, 20, 50, 1000];
     var pos = {
-      200:[-170, 30],
-      500:[0, 24],
-      100:[170, 30],
-      20:[-170, -36],
-      50:[0, -36],
-      1000:[170, -36]
+      200:[-170, 34],
+      500:[0, 34],
+      100:[170, 34],
+      20:[-170, -46],
+      50:[0, -46],
+      1000:[170, -46]
     };
     this.ui.autoCountButtons = [];
     for (var ci=0; ci<counts.length; ci++) {
@@ -1196,7 +1196,7 @@ var SlotScene = cc.Scene.extend({
       })(ci);
     }
 
-    this.ui.btnAutoSpin = this._makeImageButton(0, -72, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 82, 82);
+    this.ui.btnAutoSpin = this._makeImageButton(0, -112, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 82, 82);
     this.ui.autoPanelInfo.addChild(this.ui.btnAutoSpin);
 
     this._registerPopupOutsideClick();
@@ -1306,21 +1306,28 @@ var SlotScene = cc.Scene.extend({
 
     cc.eventManager.addListener({
       event: cc.EventListener.TOUCH_ONE_BY_ONE,
-      swallowTouches: false,
+      swallowTouches: true,
       onTouchBegan: function(t){
         var worldPoint = t.getLocation();
+        var closedAny = false;
 
         if (self._betPanelOpen && self.ui && self.ui.betInfoPanel && self.ui.betInfoPanel.isVisible && self.ui.betInfoPanel.isVisible()) {
           var insideBet = self._isWorldPointInsideNodeRect(self.ui.betInfoPanel, worldPoint, self._betPanelSize || cc.size(520, 360));
-          if (!insideBet) self._closeBetPanel();
+          if (!insideBet) {
+            self._closeBetPanel();
+            closedAny = true;
+          }
         }
 
         if (self._autoPanelOpen && self.ui && self.ui.autoPanelInfo && self.ui.autoPanelInfo.isVisible && self.ui.autoPanelInfo.isVisible()) {
           var insideAuto = self._isWorldPointInsideNodeRect(self.ui.autoPanelInfo, worldPoint, self._autoPanelSize || cc.size(700, 500));
-          if (!insideAuto) self._closeAutoPanel();
+          if (!insideAuto) {
+            self._closeAutoPanel();
+            closedAny = true;
+          }
         }
 
-        return false;
+        return closedAny;
       }
     }, this.uiLayer);
   },
@@ -1646,8 +1653,16 @@ var SlotScene = cc.Scene.extend({
       var gridCenterY = startY + ((rows - 1) * cellH) / 2;
       gridFrame.setPosition(gridCenterX, gridCenterY);
       // Add generous padding so frame encloses spinning/landing motion across all reel counts.
-      this._fitSpriteTo(gridFrame, reels * cellW + 120, rows * cellH + 120, false);
+      var gridCoverW = ((reels - 1) * cellW + frameW) + 44;
+      var gridCoverH = ((rows - 1) * cellH + frameH) + 48;
+      this._fitSpriteTo(gridFrame, gridCoverW, gridCoverH, false);
       this.gridLayer.addChild(gridFrame, 1);
+
+      // Foreground bezel to keep spinning symbols visually inside the frame.
+      var gridFrameFront = new cc.Sprite(gridFramePath);
+      gridFrameFront.setPosition(gridCenterX, gridCenterY);
+      this._fitSpriteTo(gridFrameFront, gridCoverW, gridCoverH, false);
+      this.gridLayer.addChild(gridFrameFront, 40);
     }
 
     this.symbolCells = [];
@@ -1908,9 +1923,9 @@ var SlotScene = cc.Scene.extend({
 
     if (!this._muted) { try { Audio.play("spin"); } catch(e){} }
 
-    var spinSec = 2.8;
-    if (this._spinMode === "quick") spinSec = 1.8;
-    if (this._spinMode === "turbo") spinSec = 1.2;
+    var spinSec = 3.0;
+    if (this._spinMode === "quick") spinSec = 2.0;
+    if (this._spinMode === "turbo") spinSec = 1.35;
 
     // Spin then land exactly on res.grid (no symbol swapping after stop)
     var safeGrid = this._normalizeGridForSpin(res && res.grid ? res.grid : null);
@@ -2061,10 +2076,10 @@ var SlotScene = cc.Scene.extend({
     }
 
     var cellH = this._cellH || 90;
-    var baseSpeed = 620;       // fast spin
-    var landWindow = 0.90;     // longer easing window for softer stops
-    var clipTop = (rows - 1) * cellH + cellH * 0.55;
-    var clipBot = -cellH * 0.55;
+    var baseSpeed = 860;       // faster reel spin with multiple visible rounds
+    var landWindow = 0.70;     // still smooth but less floaty near stop
+    var clipTop = (rows - 1) * cellH + cellH * 0.45;
+    var clipBot = -cellH * 0.45;
 
     function layoutReel(reelIndex){
       var strip = self.reelStrips[reelIndex];

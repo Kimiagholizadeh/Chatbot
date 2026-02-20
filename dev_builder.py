@@ -782,7 +782,9 @@ var SlotScene = cc.Scene.extend({
     if (fn) {
       var texPath = "res/assets/symbols/" + fn;
       try { sprite.setTexture(texPath); } catch(e) {}
-      this._fitToBox(sprite, 90, 64);
+      var targetW = Math.min(116, Math.floor((this._cellW || 120) * 0.88));
+      var targetH = Math.min(92, Math.floor((this._cellH || 90) * 0.86));
+      this._fitToBox(sprite, targetW, targetH);
       sprite._baseScale = sprite.getScale();
       sprite.setVisible(true);
     } else {
@@ -1000,10 +1002,10 @@ var SlotScene = cc.Scene.extend({
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
-    var spinAnchor = cc.p(850, 216);
-    var speedAnchor = cc.p(814, 128);
-    var betAnchor  = cc.p(886, 128);
-    var autoAnchor = cc.p(850, 48);
+    var spinAnchor = cc.p(874, 216);
+    var speedAnchor = cc.p(838, 128);
+    var betAnchor  = cc.p(910, 128);
+    var autoAnchor = cc.p(874, 48);
     var popupCenter = cc.p(480, 165);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -1622,12 +1624,12 @@ var SlotScene = cc.Scene.extend({
 
     // Layout that stays aligned for any 3..7 reels and 3..6 rows.
     // Keep reels larger than original while guaranteeing they stay inside the frame area.
-    var baseCellW = 144;
-    var baseCellH = 114;
+    var baseCellW = 138;
+    var baseCellH = 108;
 
     // Scale down automatically for larger reel/row combinations so gameplay never clips/offscreens.
-    var maxGridW = 740;
-    var maxGridH = 336;
+    var maxGridW = 710;
+    var maxGridH = 324;
     var fitScaleW = maxGridW / Math.max(1, reels * baseCellW);
     var fitScaleH = maxGridH / Math.max(1, rows * baseCellH);
     var fitScale = Math.min(1, fitScaleW, fitScaleH);
@@ -1637,8 +1639,8 @@ var SlotScene = cc.Scene.extend({
     cellW = Math.max(106, cellW);
     cellH = Math.max(78, cellH);
 
-    var frameW = Math.floor(cellW * 0.9);
-    var frameH = Math.floor(cellH * 0.86);
+    var frameW = Math.floor(cellW * 0.96);
+    var frameH = Math.floor(cellH * 0.94);
 
     var startX = 480 - ((reels - 1) * cellW) / 2;
     // Lift grid slightly upward from center while keeping all rows visible.
@@ -1770,7 +1772,8 @@ var SlotScene = cc.Scene.extend({
 
     if (fn) {
       var texPath = "res/assets/symbols/" + fn;
-      var targetW = 90, targetH = 64;
+      var targetW = Math.min(116, Math.floor((this._cellW || 120) * 0.88));
+      var targetH = Math.min(92, Math.floor((this._cellH || 90) * 0.86));
 
       if (cell.kind === "label") {
         cell.node.removeFromParent(true);
@@ -2128,7 +2131,7 @@ var SlotScene = cc.Scene.extend({
           tStop = self._spinStopTimes[c];
           timeLeft = tStop - self._spinElapsed;
         }
-        if (timeLeft <= 0) {
+        if (timeLeft <= 0 && self._spinOffsets[c] <= 1.2) {
           self._spinOffsets[c] = 0;
           layoutReel(c);
           self._spinLocked[c] = true;

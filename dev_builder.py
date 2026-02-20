@@ -1012,7 +1012,7 @@ var SlotScene = cc.Scene.extend({
     var spinAnchor = cc.p(886, 210);
     var speedAnchor = cc.p(852, 122);
     var betAnchor  = cc.p(918, 122);
-    var autoAnchor = cc.p(888, 50);
+    var autoAnchor = cc.p(888, 56);
     var popupCenter = cc.p(480, 165);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -1217,7 +1217,7 @@ var SlotScene = cc.Scene.extend({
     this._registerPopupOutsideClick();
 
     // Settings menu button + slim vertical popup above it.
-    this.ui.settingsButton = this._makeImageButton(64, 50, "", function(){
+    this.ui.settingsButton = this._makeImageButton(64, 56, "", function(){
       self._unlockAudioOnce();
       self._toggleSettingsMenu();
     }, {
@@ -1233,13 +1233,13 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 220, 210, 280, ["popup_panel_bg","auto_panel"], true);
+    this.ui.settingsPanel = this._makePanel(64, 190, 210, 280, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
     // Static bottom ribbon under the menu popup (from left edge to popup edge).
-    this.ui.menuRibbon = this._makePanel(480, 28, 956, 56, ["popup_panel_bg","auto_panel"], true);
-    this.uiLayer.addChild(this.ui.menuRibbon, 210);
+    this.ui.menuRibbon = this._makePanel(480, 28, 960, 56, ["popup_panel_bg","auto_panel"], true);
+    this.uiLayer.addChild(this.ui.menuRibbon, 1);
 
     this._applyVolumeMode = function(mode){
       self._volumeMode = mode || "high";

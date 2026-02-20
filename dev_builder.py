@@ -1233,7 +1233,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 250, 230, 320, ["popup_panel_bg","auto_panel"], true);
+    this.ui.settingsPanel = this._makePanel(64, 245, 230, 300, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1323,6 +1323,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.infoPanel.setVisible(false);
     this.ui.infoPanelClose = this._makeButton(430, 244, "X", function(){ self._toggleInfoPanel(false); }, 54, 34);
     this.ui.infoPanel.addChild(this.ui.infoPanelClose);
+    this.ui.infoPanelClose.setVisible(false);
     this.ui.infoText = new cc.LabelTTF(this._getInfoText(), "Arial", 18, cc.size(860, 430), cc.TEXT_ALIGNMENT_LEFT, cc.VERTICAL_TEXT_ALIGNMENT_TOP);
     this.ui.infoText.setAnchorPoint(0, 1);
     this.ui.infoText.setPosition(-430, 210);
@@ -1340,7 +1341,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(230, 320));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(230, 300));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;

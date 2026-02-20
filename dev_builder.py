@@ -874,7 +874,7 @@ var SlotScene = cc.Scene.extend({
     return node;
   },
 
-  _makePanel: function(x, y, w, h, bgKeys){
+  _makePanel: function(x, y, w, h, bgKeys, stretchToFit){
     var n = new cc.Node();
     n.setPosition(x, y);
     n.setContentSize(w, h);
@@ -884,10 +884,16 @@ var SlotScene = cc.Scene.extend({
       var sp = new cc.Sprite(bgPath);
       var sz = sp.getContentSize();
       if (sz && sz.width && sz.height) {
-        var sc = Math.min(w / sz.width, h / sz.height);
-        sp.setScale(sc);
+        if (stretchToFit) {
+          sp.setScaleX(w / sz.width);
+          sp.setScaleY(h / sz.height);
+        } else {
+          var sc = Math.min(w / sz.width, h / sz.height);
+          sp.setScale(sc);
+        }
       }
       n.addChild(sp);
+      n._hitBg = sp;
     } else {
       var bg = new cc.LayerColor(cc.color(16, 20, 36, 230), w, h);
       if (bg.setIgnoreAnchorPointForPosition) bg.setIgnoreAnchorPointForPosition(false);
@@ -1227,7 +1233,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 200, 180, 980, ["popup_panel_bg","auto_panel"]);
+    this.ui.settingsPanel = this._makePanel(64, 220, 230, 920, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1258,7 +1264,7 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 10, "", function(){
+    this.ui.volumeButton = this._makeImageButton(0, 120, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
@@ -1275,7 +1281,7 @@ var SlotScene = cc.Scene.extend({
     }, 116, 42);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, -44, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(0, 56, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
@@ -1284,12 +1290,12 @@ var SlotScene = cc.Scene.extend({
     }, 116, 42);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, -98, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(0, -8, "SET", function(){
       self._toggleSettingsMenu(false);
     }, 110, 38);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, -152, "", function(){
+    this.ui.settingsCloseButton = this._makeImageButton(0, -72, "", function(){
       self._toggleSettingsMenu(false);
     }, {
       normal:["btn_menu_close"],
@@ -1301,7 +1307,7 @@ var SlotScene = cc.Scene.extend({
     this._applyVolumeMode("high");
     this._refreshVolumeButtonSkin();
 
-    this.ui.infoPanel = this._makePanel(480, 270, 960, 540, ["popup_panel_bg","help_popup_panel"]);
+    this.ui.infoPanel = this._makePanel(480, 270, 960, 540, ["popup_panel_bg","help_popup_panel"], true);
     this.uiLayer.addChild(this.ui.infoPanel, 230);
     this.ui.infoPanel.setVisible(false);
     this.ui.infoPanelClose = this._makeButton(430, 244, "X", function(){ self._toggleInfoPanel(false); }, 54, 34);
@@ -1323,7 +1329,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(180, 980));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(230, 920));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;

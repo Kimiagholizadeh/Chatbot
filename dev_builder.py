@@ -1723,9 +1723,31 @@ var SlotScene = cc.Scene.extend({
     this._spinStopTimes = new Array(reels);
 
     for (var c2=0;c2<reels;c2++){
+      var reelHost = new cc.Node();
+      reelHost.setPosition(startX + c2*cellW, startY);
+      this.gridLayer.addChild(reelHost, 20);
+
+      var stripParent = reelHost;
+      if (cc.ClippingNode && cc.DrawNode) {
+        try {
+          var stencil = new cc.DrawNode();
+          var clipL = -frameW * 0.54;
+          var clipR = frameW * 0.54;
+          var clipB = -cellH * 0.52;
+          var clipT = (rows - 1) * cellH + cellH * 0.52;
+          stencil.drawRect(cc.p(clipL, clipB), cc.p(clipR, clipT), cc.color(255,255,255,255), 0, cc.color(255,255,255,255));
+
+          var clipNode = new cc.ClippingNode(stencil);
+          clipNode.setAlphaThreshold(0.05);
+          clipNode.setInverted(false);
+          reelHost.addChild(clipNode, 1);
+          stripParent = clipNode;
+        } catch (eClip) {}
+      }
+
       var stripNode = new cc.Node();
-      stripNode.setPosition(startX + c2*cellW, startY);
-      this.gridLayer.addChild(stripNode, 20);
+      stripNode.setPosition(0, 0);
+      stripParent.addChild(stripNode, 1);
 
       var sprites = [];
       for (var i=0;i<rows+2;i++){

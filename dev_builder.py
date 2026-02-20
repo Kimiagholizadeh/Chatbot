@@ -1227,7 +1227,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 300, 210, 520, ["popup_panel_bg","auto_panel"]);
+    this.ui.settingsPanel = this._makePanel(64, 270, 210, 420, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1258,7 +1258,7 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 164, "", function(){
+    this.ui.volumeButton = this._makeImageButton(0, 84, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
@@ -1275,7 +1275,7 @@ var SlotScene = cc.Scene.extend({
     }, 78, 28);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, 132, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(0, 58, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
@@ -1284,12 +1284,12 @@ var SlotScene = cc.Scene.extend({
     }, 78, 28);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, 100, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(0, 32, "SET", function(){
       self._toggleSettingsMenu(false);
     }, 78, 26);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, 68, "", function(){
+    this.ui.settingsCloseButton = this._makeImageButton(0, 6, "", function(){
       self._toggleSettingsMenu(false);
     }, {
       normal:["btn_menu_close"],
@@ -1323,7 +1323,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(210, 520));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(210, 420));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;

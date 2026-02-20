@@ -1044,7 +1044,7 @@ var SlotScene = cc.Scene.extend({
       on:["btn_speed_normal_on","btn_speed_quick_on","btn_speed_turbo_on"],
       off:["btn_speed_normal","btn_speed_quick","btn_speed_turbo"]
     }, 132, 132);
-    this.ui.speedModeButton.setScale(0.6);
+    this.ui.speedModeButton.setScale(0.44);
     this.uiLayer.addChild(this.ui.speedModeButton);
 
     this.ui.betPanelButton = this._makeImageButton(betAnchor.x, betAnchor.y, "BET", function(){
@@ -1055,12 +1055,12 @@ var SlotScene = cc.Scene.extend({
       on:["btn_bet_on","btn_bet"],
       off:["btn_bet_off","btn_bet"]
     }, 132, 132);
-    this.ui.betPanelButton.setScale(0.6);
+    this.ui.betPanelButton.setScale(0.42);
     this.uiLayer.addChild(this.ui.betPanelButton);
 
     this.ui.autoSpinPanel = new cc.Node();
     this.ui.autoSpinPanel.setPosition(autoAnchor);
-    this.ui.autoSpinPanel.setScale(0.6);
+    this.ui.autoSpinPanel.setScale(0.42);
     this.uiLayer.addChild(this.ui.autoSpinPanel);
 
     this.ui.autoButton = this._makeImageButton(0, 0, "AUTO", function(){
@@ -1168,9 +1168,9 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoPlayHeader.setPosition(0, 178);
     this.ui.autoPanelInfo.addChild(this.ui.autoPlayHeader, 2);
 
-    this.ui.btnTurboSpin = this._makeImageButton(-125, 132, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 120, 62);
+    this.ui.btnTurboSpin = this._makeImageButton(-125, 132, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 86, 44);
     this.ui.autoPanelInfo.addChild(this.ui.btnTurboSpin);
-    this.ui.btnQuickSpin = this._makeImageButton(125, 132, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 120, 62);
+    this.ui.btnQuickSpin = this._makeImageButton(125, 132, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 86, 44);
     this.ui.autoPanelInfo.addChild(this.ui.btnQuickSpin);
 
     this.ui.autoBtnContainer = new cc.Node();
@@ -1198,7 +1198,7 @@ var SlotScene = cc.Scene.extend({
       })(ci);
     }
 
-    this.ui.btnAutoSpin = this._makeImageButton(0, -112, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 82, 82);
+    this.ui.btnAutoSpin = this._makeImageButton(0, -112, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 62, 62);
     this.ui.autoPanelInfo.addChild(this.ui.btnAutoSpin);
 
     this._registerPopupOutsideClick();
@@ -2051,9 +2051,11 @@ var SlotScene = cc.Scene.extend({
     for (var k in SlotModel.math.symbols) ids.push(k);
     if (!ids.length) ids = ["A","K","Q","J","10","9","WILD","SCAT"];
 
-    // stagger stops
+    // Staggered sequential stops: reel 1, then 2, ... up to last reel.
+    var stopBase = totalSeconds * 0.52;
+    var stopStep = Math.max(0.15, totalSeconds * 0.10);
     for (var c=0;c<reels;c++){
-      this._spinStopTimes[c] = totalSeconds * (0.60 + 0.40 * (c / Math.max(1, reels - 1)));
+      this._spinStopTimes[c] = stopBase + c * stopStep;
       this._spinOffsets[c] = 0;
       this._spinLocked[c] = false;
     }
@@ -2084,8 +2086,8 @@ var SlotScene = cc.Scene.extend({
     var cellH = this._cellH || 90;
     var baseSpeed = 980;       // faster reel spin with more visible rounds
     var landWindow = 0.70;     // still smooth but less floaty near stop
-    var clipTop = (rows - 1) * cellH + cellH * 0.50;
-    var clipBot = -cellH * 0.50;
+    var clipTop = (rows - 1) * cellH + cellH * 0.42;
+    var clipBot = -cellH * 0.42;
 
     function layoutReel(reelIndex){
       var strip = self.reelStrips[reelIndex];

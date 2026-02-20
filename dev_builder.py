@@ -1002,10 +1002,10 @@ var SlotScene = cc.Scene.extend({
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
-    var spinAnchor = cc.p(874, 216);
-    var speedAnchor = cc.p(838, 128);
-    var betAnchor  = cc.p(910, 128);
-    var autoAnchor = cc.p(874, 48);
+    var spinAnchor = cc.p(888, 210);
+    var speedAnchor = cc.p(850, 122);
+    var betAnchor  = cc.p(922, 122);
+    var autoAnchor = cc.p(888, 42);
     var popupCenter = cc.p(480, 165);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -1658,8 +1658,8 @@ var SlotScene = cc.Scene.extend({
       var gridCenterY = startY + ((rows - 1) * cellH) / 2;
       gridFrame.setPosition(gridCenterX, gridCenterY);
       // Add generous padding so frame encloses spinning/landing motion across all reel counts.
-      var gridCoverW = ((reels - 1) * cellW + frameW) + 220;
-      var gridCoverH = ((rows - 1) * cellH + frameH) + 140;
+      var gridCoverW = ((reels - 1) * cellW + frameW) + 150;
+      var gridCoverH = ((rows - 1) * cellH + frameH) + 118;
       this._fitSpriteTo(gridFrame, gridCoverW, gridCoverH, false);
       this.gridLayer.addChild(gridFrame, 1);
 
@@ -2084,8 +2084,8 @@ var SlotScene = cc.Scene.extend({
     var cellH = this._cellH || 90;
     var baseSpeed = 980;       // faster reel spin with more visible rounds
     var landWindow = 0.70;     // still smooth but less floaty near stop
-    var clipTop = (rows - 1) * cellH + cellH * 0.02;
-    var clipBot = -cellH * 0.02;
+    var clipTop = (rows - 1) * cellH + cellH * 0.50;
+    var clipBot = -cellH * 0.50;
 
     function layoutReel(reelIndex){
       var strip = self.reelStrips[reelIndex];

@@ -655,6 +655,7 @@ var SlotScene = cc.Scene.extend({
     // audio
     this._muted = false;
     this._audioUnlocked = false;
+    this._volumeMode = "high"; // high|mute|low|med
 
     // draw
     this.lineDraw = null;
@@ -782,7 +783,9 @@ var SlotScene = cc.Scene.extend({
     if (fn) {
       var texPath = "res/assets/symbols/" + fn;
       try { sprite.setTexture(texPath); } catch(e) {}
-      this._fitToBox(sprite, 90, 64);
+      var targetW = Math.min(116, Math.floor((this._cellW || 120) * 0.88));
+      var targetH = Math.min(92, Math.floor((this._cellH || 90) * 0.86));
+      this._fitToBox(sprite, targetW, targetH);
       sprite._baseScale = sprite.getScale();
       sprite.setVisible(true);
     } else {
@@ -974,8 +977,10 @@ var SlotScene = cc.Scene.extend({
       this.ui.uiBar = uiBar;
     }
 
+    var frameNumberColor = cc.color(255,255,255);
+
     this.ui.balanceTitle = new cc.LabelTTF("BALANCE", "Arial", 16);
-    this.ui.balanceTitle.setColor(cc.color(236,236,236));
+    this.ui.balanceTitle.setColor(frameNumberColor);
     this.ui.balanceTitle.setAnchorPoint(0.5, 0.5);
     this.ui.balanceTitle.setPosition(250, 54);
     this.uiLayer.addChild(this.ui.balanceTitle, 4);
@@ -986,7 +991,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.balanceAmount, 4);
 
     this.ui.spinTitle = new cc.LabelTTF("SPIN", "Arial", 16);
-    this.ui.spinTitle.setColor(cc.color(236,236,236));
+    this.ui.spinTitle.setColor(frameNumberColor);
     this.ui.spinTitle.setAnchorPoint(0.5, 0.5);
     this.ui.spinTitle.setPosition(710, 54);
     this.uiLayer.addChild(this.ui.spinTitle, 4);
@@ -998,15 +1003,15 @@ var SlotScene = cc.Scene.extend({
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
-    var spinAnchor = cc.p(860, 218);
-    var speedAnchor = cc.p(825, 126);
-    var betAnchor  = cc.p(895, 126);
-    var autoAnchor = cc.p(860, 72);
+    var spinAnchor = cc.p(886, 210);
+    var speedAnchor = cc.p(852, 122);
+    var betAnchor  = cc.p(918, 122);
+    var autoAnchor = cc.p(888, 64);
     var popupCenter = cc.p(480, 165);
 
     this.ui.spinButtonsPanel = new cc.Node();
     this.ui.spinButtonsPanel.setPosition(spinAnchor);
-    this.ui.spinButtonsPanel.setScale(0.55);
+    this.ui.spinButtonsPanel.setScale(0.5);
     this.uiLayer.addChild(this.ui.spinButtonsPanel);
 
     this.ui.spinBtn = this._makeImageButton(0, 0, I18N.t("spin","SPIN"), function(){
@@ -1018,7 +1023,7 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_spin"],
       on:["btn_spin_on","btn_spin"],
       off:["btn_spin_off","btn_spin"]
-    }, 228, 230);
+    }, 190, 190);
     this.ui.spinButtonsPanel.addChild(this.ui.spinBtn);
 
     this.ui.stopBtn = this._makeImageButton(0, 0, "STOP", function(){
@@ -1028,7 +1033,7 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_stop_on","btn_stop"],
       on:["btn_stop_on","btn_stop"],
       off:["btn_stop_off","btn_stop"]
-    }, 228, 230);
+    }, 190, 190);
     this.ui.spinButtonsPanel.addChild(this.ui.stopBtn);
     this.ui.stopBtn.setVisible(false);
 
@@ -1039,8 +1044,8 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_speed_normal","btn_speed_normal_on","btn_speed_quick","btn_speed_turbo"],
       on:["btn_speed_normal_on","btn_speed_quick_on","btn_speed_turbo_on"],
       off:["btn_speed_normal","btn_speed_quick","btn_speed_turbo"]
-    }, 125, 125);
-    this.ui.speedModeButton.setScale(0.55);
+    }, 132, 132);
+    this.ui.speedModeButton.setScale(0.45);
     this.uiLayer.addChild(this.ui.speedModeButton);
 
     this.ui.betPanelButton = this._makeImageButton(betAnchor.x, betAnchor.y, "BET", function(){
@@ -1050,13 +1055,13 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_bet"],
       on:["btn_bet_on","btn_bet"],
       off:["btn_bet_off","btn_bet"]
-    }, 125, 125);
-    this.ui.betPanelButton.setScale(0.55);
+    }, 132, 132);
+    this.ui.betPanelButton.setScale(0.45);
     this.uiLayer.addChild(this.ui.betPanelButton);
 
     this.ui.autoSpinPanel = new cc.Node();
     this.ui.autoSpinPanel.setPosition(autoAnchor);
-    this.ui.autoSpinPanel.setScale(0.55);
+    this.ui.autoSpinPanel.setScale(0.45);
     this.uiLayer.addChild(this.ui.autoSpinPanel);
 
     this.ui.autoButton = this._makeImageButton(0, 0, "AUTO", function(){
@@ -1066,7 +1071,7 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_auto"],
       on:["btn_auto_on","btn_auto"],
       off:["btn_auto_off","btn_auto"]
-    }, 125, 125);
+    }, 132, 132);
     this.ui.autoSpinPanel.addChild(this.ui.autoButton);
 
     this.ui.autoStopButton = this._makeImageButton(0, 0, "AUTO", function(){
@@ -1076,15 +1081,17 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_auto_active","btn_stop_on"],
       on:["btn_auto_active","btn_stop_on"],
       off:["btn_auto_active","btn_stop_off"]
-    }, 125, 125);
+    }, 132, 132);
     this.ui.autoSpinPanel.addChild(this.ui.autoStopButton);
     this.ui.autoStopButton.setVisible(false);
 
-    this._betPanelSize = cc.size(640, 320);
-    this._autoPanelSize = cc.size(520, 430);
+    // Bet popup should be clearly horizontal (~2:1 width:height).
+    this._betPanelSize = cc.size(940, 460);
+    this._autoPanelSize = cc.size(760, 520);
 
     this.ui.betInfoPanel = new cc.Node();
     this.ui.betInfoPanel.setPosition(popupCenter);
+    this.ui.betInfoPanel.setContentSize(this._betPanelSize);
     this.uiLayer.addChild(this.ui.betInfoPanel, 200);
     this.ui.betInfoPanel.setVisible(false);
 
@@ -1093,40 +1100,42 @@ var SlotScene = cc.Scene.extend({
       var betBg = new cc.Sprite(betBgPath);
       betBg.setPosition(0, 0);
       this._fitSpriteTo(betBg, this._betPanelSize.width, this._betPanelSize.height, false);
-      betBg.setOpacity(245);
+      betBg.setOpacity(230);
       this.ui.betInfoPanel.addChild(betBg);
+      this.ui.betInfoPanel._hitBg = betBg;
     }
 
+    var betHeaderY = (this._betPanelSize.height * 0.5) - 34;
     var betHeaderPanelPath = this._uiAsset(["popup_header_panel"]);
     if (betHeaderPanelPath) {
       var betHeaderPanel = new cc.Sprite(betHeaderPanelPath);
-      betHeaderPanel.setPosition(0, 126);
-      this._fitSpriteTo(betHeaderPanel, 320, 58, false);
+      betHeaderPanel.setPosition(0, betHeaderY);
+      this._fitSpriteTo(betHeaderPanel, 360, 64, false);
       this.ui.betInfoPanel.addChild(betHeaderPanel, 1);
     }
 
-    this.ui.betHeader = new cc.LabelTTF("PLAY LEVEL", "Arial", 17);
-    this.ui.betHeader.setColor(cc.color(236,236,236));
-    this.ui.betHeader.setPosition(0, 126);
+    this.ui.betHeader = new cc.LabelTTF("PLAY BET", "Arial", 17);
+    this.ui.betHeader.setColor(cc.color(255,255,255));
+    this.ui.betHeader.setPosition(0, betHeaderY);
     this.ui.betInfoPanel.addChild(this.ui.betHeader, 2);
 
     this.ui.betPanel_decBet = this._makeImageButton(-118, 14, "", function(){ self.onDecreaseBetClick(); }, { normal:["btn_bet_minus"], on:["btn_bet_minus_on","btn_bet_minus"], off:["btn_bet_minus_off","btn_bet_minus"] }, 62, 62);
     this.ui.betInfoPanel.addChild(this.ui.betPanel_decBet);
     this.ui.betPanel_incBet = this._makeImageButton(118, 14, "", function(){ self.onIncreaseBetClick(); }, { normal:["btn_bet_plus"], on:["btn_bet_plus_on","btn_bet_plus"], off:["btn_bet_plus_off","btn_bet_plus"] }, 62, 62);
     this.ui.betInfoPanel.addChild(this.ui.betPanel_incBet);
-    this.ui.betPanelMaxBtn = this._makeImageButton(0, -98, "PLAY MAX", function(){ self.onSetMaxBetClick(); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_on"], hideLabelWhenTextured:false }, 132, 42);
+    this.ui.betPanelMaxBtn = this._makeImageButton(0, -98, "PLAY MAX", function(){ self.onSetMaxBetClick(); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_on"], hideLabelWhenTextured:false }, 116, 36);
     this.ui.betInfoPanel.addChild(this.ui.betPanelMaxBtn);
     if (this.ui.betPanelMaxBtn && this.ui.betPanelMaxBtn._label) {
       this.ui.betPanelMaxBtn._label.setColor(cc.color(255,255,255));
-      this.ui.betPanelMaxBtn._label.setFontSize(16);
+      this.ui.betPanelMaxBtn._label.setFontSize(14);
     }
     if (this.ui.betPanelMaxBtn && this.ui.betPanelMaxBtn._setState) {
       var origSetState = this.ui.betPanelMaxBtn._setState;
       this.ui.betPanelMaxBtn._setState = function(st){
         origSetState(st);
         if (!this._label) return;
-        if (st === "on") this._label.setFontSize(17);
-        else this._label.setFontSize(16);
+        if (st === "on") this._label.setFontSize(15);
+        else this._label.setFontSize(14);
         if (st === "off") this._label.setColor(cc.color(150,150,150));
         else this._label.setColor(cc.color(255,255,255));
       };
@@ -1137,7 +1146,8 @@ var SlotScene = cc.Scene.extend({
     this.ui.betInfoPanel.addChild(this.ui.betPanelText);
 
     this.ui.autoPanelInfo = new cc.Node();
-    this.ui.autoPanelInfo.setPosition(cc.p(480, 190));
+    this.ui.autoPanelInfo.setPosition(cc.p(480, 220));
+    this.ui.autoPanelInfo.setContentSize(this._autoPanelSize);
     this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
     this.ui.autoPanelInfo.setVisible(false);
 
@@ -1146,88 +1156,150 @@ var SlotScene = cc.Scene.extend({
       var autoBg = new cc.Sprite(autoBgPath);
       autoBg.setPosition(0, 0);
       this._fitSpriteTo(autoBg, this._autoPanelSize.width, this._autoPanelSize.height, false);
-      autoBg.setOpacity(245);
+      autoBg.setOpacity(230);
       this.ui.autoPanelInfo.addChild(autoBg);
+      this.ui.autoPanelInfo._hitBg = autoBg;
     }
 
+    var autoHeaderY = (this._autoPanelSize.height * 0.5) - 34;
     var autoHeaderPanelPath = this._uiAsset(["popup_header_panel"]);
     if (autoHeaderPanelPath) {
       var autoHeaderPanel = new cc.Sprite(autoHeaderPanelPath);
-      autoHeaderPanel.setPosition(0, 178);
-      this._fitSpriteTo(autoHeaderPanel, 320, 72, false);
+      autoHeaderPanel.setPosition(0, autoHeaderY);
+      this._fitSpriteTo(autoHeaderPanel, 360, 64, false);
       this.ui.autoPanelInfo.addChild(autoHeaderPanel, 1);
     }
 
     this.ui.autoPlayHeader = new cc.LabelTTF("AUTO PLAY", "Arial", 17);
-    this.ui.autoPlayHeader.setColor(cc.color(236,236,236));
-    this.ui.autoPlayHeader.setPosition(0, 178);
+    this.ui.autoPlayHeader.setColor(cc.color(255,255,255));
+    this.ui.autoPlayHeader.setPosition(0, autoHeaderY);
     this.ui.autoPanelInfo.addChild(this.ui.autoPlayHeader, 2);
 
-    this.ui.btnTurboSpin = this._makeImageButton(-95, 120, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 100, 58);
+    this.ui.btnTurboSpin = this._makeImageButton(-125, 132, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 72, 38);
     this.ui.autoPanelInfo.addChild(this.ui.btnTurboSpin);
-    this.ui.btnQuickSpin = this._makeImageButton(95, 120, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 100, 58);
+    this.ui.btnQuickSpin = this._makeImageButton(125, 132, "", function(){ self.onQuickSpinButtonClick(); }, { normal:["btn_quick_off","btn_speed_quick"], on:["btn_quick_on","btn_speed_quick_on","btn_speed_quick"], off:["btn_quick_off","btn_speed_quick"] }, 72, 38);
     this.ui.autoPanelInfo.addChild(this.ui.btnQuickSpin);
 
     this.ui.autoBtnContainer = new cc.Node();
-    this.ui.autoBtnContainer.setPosition(0, 18);
+    this.ui.autoBtnContainer.setPosition(0, -2);
     this.ui.autoPanelInfo.addChild(this.ui.autoBtnContainer);
 
     var counts = [200, 500, 100, 20, 50, 1000];
     var pos = {
-      200:[-135, 24],
-      500:[0, 24],
-      100:[135, 24],
-      20:[-135, -30],
-      50:[0, -30],
-      1000:[135, -30]
+      200:[-170, 34],
+      500:[0, 34],
+      100:[170, 34],
+      20:[-170, -46],
+      50:[0, -46],
+      1000:[170, -46]
     };
     this.ui.autoCountButtons = [];
     for (var ci=0; ci<counts.length; ci++) {
       (function(idx){
         var cnt = counts[idx];
         var xy = pos[cnt];
-        var b = self._makeImageButton(xy[0], xy[1], String(cnt), function(){ self.enableAutoSpin(null, cnt); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_off"], hideLabelWhenTextured:false }, 94, 38);
+        var b = self._makeImageButton(xy[0], xy[1], String(cnt), function(){ self.enableAutoSpin(null, cnt); }, { normal:["btn_auto_amt"], on:["btn_auto_amt_on","btn_auto_amt"], off:["btn_auto_amt","btn_auto_amt_off"], hideLabelWhenTextured:false }, 108, 42);
         b._autoCountValue = cnt;
         self.ui.autoBtnContainer.addChild(b);
         self.ui.autoCountButtons.push(b);
       })(ci);
     }
 
-    this.ui.btnAutoSpin = this._makeImageButton(0, -72, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 82, 82);
+    this.ui.btnAutoSpin = this._makeImageButton(0, -112, "", function(){ self.onAutoButtonClick(); }, { normal:["btn_auto_spin"], on:["btn_auto_spin_on","btn_auto_spin"], off:["btn_auto_spin_off","btn_auto_spin"] }, 64, 64);
     this.ui.autoPanelInfo.addChild(this.ui.btnAutoSpin);
 
     this._registerPopupOutsideClick();
 
-    // Settings / info controls (top-right) so audio + help are always available.
-    this.ui.settingsButton = this._makeImageButton(64, 58, "SET", function(){
+    // Settings menu button + slim vertical popup above it.
+    this.ui.settingsButton = this._makeImageButton(64, 58, "", function(){
       self._unlockAudioOnce();
       self._toggleSettingsMenu();
     }, {
-      normal:["btn_setting","btn_settings","btn_menu"],
-      on:["btn_setting_on","btn_settings_on","btn_menu_on","btn_setting"],
-      off:["btn_setting_off","btn_settings_off","btn_menu_off","btn_setting"]
+      normal:["btn_menu"],
+      on:["btn_menu_on","btn_menu"],
+      off:["btn_menu_off","btn_menu"]
     }, 70, 70);
     this.uiLayer.addChild(this.ui.settingsButton);
 
-    this.ui.settingsPanel = new cc.Node();
-    this.ui.settingsPanel.setPosition(154, 118);
+    this.ui.settingsOverlay = new cc.LayerColor(cc.color(6, 10, 22, 170), 960, 540);
+    if (this.ui.settingsOverlay.setIgnoreAnchorPointForPosition) this.ui.settingsOverlay.setIgnoreAnchorPointForPosition(false);
+    this.ui.settingsOverlay.setPosition(0, 0);
+    this.uiLayer.addChild(this.ui.settingsOverlay, 218);
+    this.ui.settingsOverlay.setVisible(false);
+
+    this.ui.settingsPanel = this._makePanel(64, 236, 186, 540, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
-    this.ui.audioButton = this._makeButton(0, 0, "AUDIO: ON", function(){
-      self._unlockAudioOnce();
-      self._muted = !self._muted;
-      if (self.ui && self.ui.audioButton && self.ui.audioButton._label) {
-        self.ui.audioButton._label.setString(self._muted ? "AUDIO: OFF" : "AUDIO: ON");
-      }
-      try { Audio.unlock(); } catch(e){}
-    }, 160, 34);
-    this.ui.settingsPanel.addChild(this.ui.audioButton);
+    this._applyVolumeMode = function(mode){
+      self._volumeMode = mode || "high";
+      var vol = 1.0;
+      self._muted = false;
+      if (self._volumeMode === "mute") { vol = 0.0; self._muted = true; }
+      else if (self._volumeMode === "low") vol = 0.35;
+      else if (self._volumeMode === "med") vol = 0.65;
+      else vol = 1.0;
+      try { cc.audioEngine.setEffectsVolume(vol); } catch(e){}
+    };
 
-    this.ui.infoButton = this._makeButton(0, -44, "INFO", function(){
+    this._refreshVolumeButtonSkin = function(){
+      if (!self.ui || !self.ui.volumeButton) return;
+      var mode = self._volumeMode || "high";
+      var base = "btn_vol_high";
+      var over = "btn_vol_high_on";
+      if (mode === "mute") { base = "btn_vol_off"; over = "btn_vol_mute_on"; }
+      else if (mode === "low") { base = "btn_vol_low"; over = "btn_vol_low_on"; }
+      else if (mode === "med") { base = "btn_vol_med"; over = "btn_vol_med_on"; }
+      self.ui.volumeButton._img = {
+        normal: self._uiAsset([base, over]),
+        on: self._uiAsset([over, base]),
+        off: self._uiAsset([base, over])
+      };
+      if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
+    };
+
+    this.ui.volumeButton = this._makeImageButton(0, 170, "", function(){
+      self._unlockAudioOnce();
+      var cur = self._volumeMode || "high";
+      var next = "high";
+      if (cur === "high") next = "mute";
+      else if (cur === "mute") next = "low";
+      else if (cur === "low") next = "med";
+      else next = "high";
+      self._applyVolumeMode(next);
+      self._refreshVolumeButtonSkin();
+    }, {
+      normal:["btn_vol_high"],
+      on:["btn_vol_high_on","btn_vol_high"],
+      off:["btn_vol_high","btn_vol_high_on"]
+    }, 92, 38);
+    this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
+
+    this.ui.helpMenuButton = this._makeImageButton(0, 112, "", function(){
       self._toggleInfoPanel();
-    }, 160, 34);
-    this.ui.settingsPanel.addChild(this.ui.infoButton);
+    }, {
+      normal:["btn_help"],
+      on:["btn_help_on","btn_help"],
+      off:["btn_help","btn_help_on"]
+    }, 92, 38);
+    this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
+
+    this.ui.settingsTextButton = this._makeButton(0, 54, "SET", function(){
+      self._toggleSettingsMenu(false);
+    }, 92, 34);
+    this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
+
+    this.ui.settingsCloseButton = this._makeImageButton(0, -4, "", function(){
+      self._toggleSettingsMenu(false);
+    }, {
+      normal:["btn_menu_close"],
+      on:["btn_menu_close_on","btn_menu_close"],
+      off:["btn_menu_close_off","btn_menu_close"]
+    }, 92, 38);
+    this.ui.settingsPanel.addChild(this.ui.settingsCloseButton, 2);
+
+    this._applyVolumeMode("high");
+    this._refreshVolumeButtonSkin();
 
     this.ui.infoPanel = this._makePanel(480, 270, 680, 330, ["popup_panel_bg","help_popup_panel"]);
     this.uiLayer.addChild(this.ui.infoPanel, 230);
@@ -1244,6 +1316,23 @@ var SlotScene = cc.Scene.extend({
     }
     if (!this.lineDraw) this.lineDraw = { clear:function(){}, drawSegment:function(){} };
 
+    if (this.ui && this.ui.settingsOverlay) {
+      cc.eventManager.addListener({
+        event: cc.EventListener.TOUCH_ONE_BY_ONE,
+        swallowTouches: true,
+        onTouchBegan: function(t){
+          if (!self.ui.settingsOverlay.isVisible()) return false;
+          var wp = t.getLocation();
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(186, 540));
+          if (!insidePanel) {
+            self._toggleSettingsMenu(false);
+            return true;
+          }
+          return false;
+        }
+      }, this.ui.settingsOverlay);
+    }
+
     this.setSpinMode("normal");
     this._refreshControlStates();
     this._refreshUI();
@@ -1252,6 +1341,9 @@ var SlotScene = cc.Scene.extend({
   _toggleSettingsMenu: function(forceOpen){
     var show = (typeof forceOpen === "boolean") ? forceOpen : !(this.ui && this.ui.settingsPanel && this.ui.settingsPanel.isVisible());
     if (this.ui && this.ui.settingsPanel) this.ui.settingsPanel.setVisible(show);
+    if (this.ui && this.ui.settingsOverlay) this.ui.settingsOverlay.setVisible(show);
+    // While popup menu is open, hide the menu trigger button.
+    if (this.ui && this.ui.settingsButton) this.ui.settingsButton.setVisible(!show);
     if (!show) this._toggleInfoPanel(false);
   },
 
@@ -1288,6 +1380,15 @@ var SlotScene = cc.Scene.extend({
 
   _isWorldPointInsideNodeRect: function(node, worldPoint, fallbackSize){
     if (!node || !node.isVisible || !node.isVisible()) return false;
+
+    // Prefer real background sprite bounds when available.
+    if (node._hitBg && node._hitBg.getBoundingBoxToWorld) {
+      try {
+        var wr = node._hitBg.getBoundingBoxToWorld();
+        return cc.rectContainsPoint(wr, worldPoint);
+      } catch (e) {}
+    }
+
     var p = node.convertToNodeSpace(worldPoint);
     var size = node.getContentSize ? node.getContentSize() : null;
     if ((!size || !size.width || !size.height) && fallbackSize) size = fallbackSize;
@@ -1301,25 +1402,35 @@ var SlotScene = cc.Scene.extend({
     if (this._popupOutsideListenerRegistered) return;
     this._popupOutsideListenerRegistered = true;
 
-    cc.eventManager.addListener({
+    var outsideClickListener = {
       event: cc.EventListener.TOUCH_ONE_BY_ONE,
-      swallowTouches: false,
+      swallowTouches: true,
       onTouchBegan: function(t){
         var worldPoint = t.getLocation();
+        var closedAny = false;
 
         if (self._betPanelOpen && self.ui && self.ui.betInfoPanel && self.ui.betInfoPanel.isVisible && self.ui.betInfoPanel.isVisible()) {
-          var insideBet = self._isWorldPointInsideNodeRect(self.ui.betInfoPanel, worldPoint, self._betPanelSize || cc.size(520, 360));
-          if (!insideBet) self._closeBetPanel();
+          var insideBet = self._isWorldPointInsideNodeRect(self.ui.betInfoPanel, worldPoint, self._betPanelSize || cc.size(940, 460));
+          if (!insideBet) {
+            self._closeBetPanel();
+            closedAny = true;
+          }
         }
 
         if (self._autoPanelOpen && self.ui && self.ui.autoPanelInfo && self.ui.autoPanelInfo.isVisible && self.ui.autoPanelInfo.isVisible()) {
-          var insideAuto = self._isWorldPointInsideNodeRect(self.ui.autoPanelInfo, worldPoint, self._autoPanelSize || cc.size(700, 500));
-          if (!insideAuto) self._closeAutoPanel();
+          var insideAuto = self._isWorldPointInsideNodeRect(self.ui.autoPanelInfo, worldPoint, self._autoPanelSize || cc.size(760, 520));
+          if (!insideAuto) {
+            self._closeAutoPanel();
+            closedAny = true;
+          }
         }
 
-        return false;
+        return closedAny;
       }
-    }, this.uiLayer);
+    };
+
+    // Fixed priority keeps this listener active even when other controls swallow touches.
+    cc.eventManager.addListener(outsideClickListener, -128);
   },
 
   _setSpinButtonsState: function(spinning){
@@ -1470,6 +1581,7 @@ var SlotScene = cc.Scene.extend({
 
   onSpeedModeButtonClick: function(){
     var mode = this._spinMode || "normal";
+    // Cycle order requested: NORMAL -> QUICK -> TURBO -> NORMAL
     if (mode === "normal") this.setSpinMode("quick");
     else if (mode === "quick") this.setSpinMode("turbo");
     else this.setSpinMode("normal");
@@ -1485,6 +1597,10 @@ var SlotScene = cc.Scene.extend({
     if (this.ui && this.ui.betPanelButton) this._setButtonDisabled(this.ui.betPanelButton, !!(this.busy || this._autoPanelOpen));
     if (this.ui && this.ui.speedModeButton) this._setButtonDisabled(this.ui.speedModeButton, !!(this.busy || this._autoPanelOpen || this._betPanelOpen));
     if (this.ui && this.ui.autoButton) this._setButtonDisabled(this.ui.autoButton, !!(this.busy || this._betPanelOpen));
+    if (this.ui && this.ui.settingsButton) {
+      this._setButtonDisabled(this.ui.settingsButton, !!(this.busy || this._spinActive || this._autoPanelOpen || this._betPanelOpen));
+      this.ui.settingsButton.setVisible(!(this.ui && this.ui.settingsPanel && this.ui.settingsPanel.isVisible && this.ui.settingsPanel.isVisible()));
+    }
 
     var canAutoStart = (this._autoRemaining || 0) > 0;
     if (this.ui && this.ui.btnAutoSpin) this._setButtonDisabled(this.ui.btnAutoSpin, !canAutoStart);
@@ -1607,20 +1723,29 @@ var SlotScene = cc.Scene.extend({
     var reels = SlotModel.cfg.math.reel_count;
     var rows  = SlotModel.cfg.math.row_count;
 
-    // Layout that stays aligned for any 3..7 reels and 3..6 rows
-    var cellW = 152;
-    var cellH = 116;
+    // Layout that stays aligned for any 3..7 reels and 3..6 rows.
+    // Keep reels larger than original while guaranteeing they stay inside the frame area.
+    var baseCellW = 138;
+    var baseCellH = 108;
 
-    // auto-fit keeps grid clear of bottom controls
-    if (rows >= 4) cellH = 102;
-    if (rows >= 5) cellH = 90;
-    if (rows >= 6) cellH = 78;
+    // Scale down automatically for larger reel/row combinations so gameplay never clips/offscreens.
+    var maxGridW = 710;
+    var maxGridH = 324;
+    var fitScaleW = maxGridW / Math.max(1, reels * baseCellW);
+    var fitScaleH = maxGridH / Math.max(1, rows * baseCellH);
+    var fitScale = Math.min(1, fitScaleW, fitScaleH);
 
-    var frameW = Math.floor(cellW * 0.9);
-    var frameH = Math.floor(cellH * 0.86);
+    var cellW = Math.floor(baseCellW * fitScale);
+    var cellH = Math.floor(baseCellH * fitScale);
+    cellW = Math.max(106, cellW);
+    cellH = Math.max(78, cellH);
+
+    var frameW = Math.floor(cellW * 0.96);
+    var frameH = Math.floor(cellH * 0.94);
 
     var startX = 480 - ((reels - 1) * cellW) / 2;
-    var startY = 320 - ((rows - 1) * cellH) / 2;
+    // Lift grid slightly upward from center while keeping all rows visible.
+    var startY = 300 - ((rows - 1) * cellH) / 2 + 18;
 
     this._cellW = cellW;
     this._cellH = cellH;
@@ -1630,9 +1755,22 @@ var SlotScene = cc.Scene.extend({
     var gridFramePath = this._uiAsset(["reel_frame","frame","panel_frame"]);
     if (gridFramePath) {
       var gridFrame = new cc.Sprite(gridFramePath);
-      gridFrame.setPosition(480, 300);
-      this._fitSpriteTo(gridFrame, reels * cellW + 42, rows * cellH + 36, false);
+      var gridCenterX = startX + ((reels - 1) * cellW) / 2;
+      var gridCenterY = startY + ((rows - 1) * cellH) / 2;
+      gridFrame.setPosition(gridCenterX, gridCenterY);
+      // Add generous padding so frame encloses spinning/landing motion across all reel counts.
+      var framePadX = Math.max(58, Math.floor(cellW * 0.92));
+      var framePadY = Math.max(30, Math.floor(cellH * 0.52));
+      var gridCoverW = ((reels - 1) * cellW + frameW) + framePadX * 2;
+      var gridCoverH = ((rows - 1) * cellH + frameH) + framePadY * 2;
+      this._fitSpriteTo(gridFrame, gridCoverW, gridCoverH, false);
       this.gridLayer.addChild(gridFrame, 1);
+
+      // Foreground bezel to keep spinning symbols visually inside the frame.
+      var gridFrameFront = new cc.Sprite(gridFramePath);
+      gridFrameFront.setPosition(gridCenterX, gridCenterY);
+      this._fitSpriteTo(gridFrameFront, gridCoverW, gridCoverH, false);
+      this.gridLayer.addChild(gridFrameFront, 40);
     }
 
     this.symbolCells = [];
@@ -1671,12 +1809,35 @@ var SlotScene = cc.Scene.extend({
     this.reelStrips = [];
     this._spinOffsets = new Array(reels);
     this._spinLocked  = new Array(reels);
+    this._spinPendingStop = new Array(reels);
     this._spinStopTimes = new Array(reels);
 
     for (var c2=0;c2<reels;c2++){
+      var reelHost = new cc.Node();
+      reelHost.setPosition(startX + c2*cellW, startY);
+      this.gridLayer.addChild(reelHost, 20);
+
+      var stripParent = reelHost;
+      if (cc.ClippingNode && cc.DrawNode) {
+        try {
+          var stencil = new cc.DrawNode();
+          var clipL = -frameW * 0.68;
+          var clipR = frameW * 0.68;
+          var clipB = -frameH * 0.50;
+          var clipT = (rows - 1) * cellH + frameH * 0.50;
+          stencil.drawRect(cc.p(clipL, clipB), cc.p(clipR, clipT), cc.color(255,255,255,255), 0, cc.color(255,255,255,255));
+
+          var clipNode = new cc.ClippingNode(stencil);
+          clipNode.setAlphaThreshold(0.05);
+          clipNode.setInverted(false);
+          reelHost.addChild(clipNode, 1);
+          stripParent = clipNode;
+        } catch (eClip) {}
+      }
+
       var stripNode = new cc.Node();
-      stripNode.setPosition(startX + c2*cellW, startY);
-      this.gridLayer.addChild(stripNode, 20);
+      stripNode.setPosition(0, 0);
+      stripParent.addChild(stripNode, 1);
 
       var sprites = [];
       for (var i=0;i<rows+2;i++){
@@ -1737,7 +1898,8 @@ var SlotScene = cc.Scene.extend({
 
     if (fn) {
       var texPath = "res/assets/symbols/" + fn;
-      var targetW = 90, targetH = 64;
+      var targetW = Math.min(116, Math.floor((this._cellW || 120) * 0.88));
+      var targetH = Math.min(92, Math.floor((this._cellH || 90) * 0.86));
 
       if (cell.kind === "label") {
         cell.node.removeFromParent(true);
@@ -1893,9 +2055,9 @@ var SlotScene = cc.Scene.extend({
 
     if (!this._muted) { try { Audio.play("spin"); } catch(e){} }
 
-    var spinSec = 2.8;
-    if (this._spinMode === "quick") spinSec = 1.8;
-    if (this._spinMode === "turbo") spinSec = 1.2;
+    var spinSec = 3.0;  // normal speed
+    if (this._spinMode === "quick") spinSec = 1.8; // faster
+    if (this._spinMode === "turbo") spinSec = 1.0; // very fast (~1s)
 
     // Spin then land exactly on res.grid (no symbol swapping after stop)
     var safeGrid = this._normalizeGridForSpin(res && res.grid ? res.grid : null);
@@ -2015,11 +2177,14 @@ var SlotScene = cc.Scene.extend({
     for (var k in SlotModel.math.symbols) ids.push(k);
     if (!ids.length) ids = ["A","K","Q","J","10","9","WILD","SCAT"];
 
-    // stagger stops
+    // Staggered sequential stops: reel 1, then 2, ... up to last reel.
+    var stopBase = totalSeconds * 0.52;
+    var stopStep = Math.max(0.15, totalSeconds * 0.10);
     for (var c=0;c<reels;c++){
-      this._spinStopTimes[c] = totalSeconds * (0.60 + 0.40 * (c / Math.max(1, reels - 1)));
+      this._spinStopTimes[c] = stopBase + c * stopStep;
       this._spinOffsets[c] = 0;
       this._spinLocked[c] = false;
+      this._spinPendingStop[c] = false;
     }
 
     this._spinActive = true;
@@ -2046,10 +2211,15 @@ var SlotScene = cc.Scene.extend({
     }
 
     var cellH = this._cellH || 90;
-    var baseSpeed = 620;       // fast spin
-    var landWindow = 0.90;     // longer easing window for softer stops
-    var clipTop = (rows - 1) * cellH + cellH * 0.55;
-    var clipBot = -cellH * 0.55;
+    var mode = this._spinMode || "normal";
+    var modeSpeedMul = 1.0;
+    if (mode === "quick") modeSpeedMul = 1.30;
+    else if (mode === "turbo") modeSpeedMul = 1.65;
+
+    var baseSpeed = 980 * modeSpeedMul; // mode-aware spin speed: normal < quick < turbo
+    var landWindow = 0.36;     // keep reels at normal speed longer; short final decel only
+    var clipTop = (rows - 1) * cellH + cellH * 0.48;
+    var clipBot = -cellH * 0.48;
 
     function layoutReel(reelIndex){
       var strip = self.reelStrips[reelIndex];
@@ -2096,11 +2266,7 @@ var SlotScene = cc.Scene.extend({
           timeLeft = tStop - self._spinElapsed;
         }
         if (timeLeft <= 0) {
-          self._spinOffsets[c] = 0;
-          layoutReel(c);
-          self._spinLocked[c] = true;
-          try { if (!self._muted) Audio.play("reel_stop"); } catch(eStop){}
-          continue;
+          self._spinPendingStop[c] = true;
         }
         allStopped = false;
 
@@ -2120,14 +2286,22 @@ var SlotScene = cc.Scene.extend({
           var entering = rotateOnce(c);
           if (!entering) continue;
 
-          if (inLanding) {
-            // During landing, keep everything deterministic:
-            // entering sprite goes to TOP extra slot (index 0) which visually feeds row 0 next.
+          if (inLanding || self._spinPendingStop[c]) {
+            // During landing/pending-stop keep symbols deterministic.
             self._setSpriteSymbol(entering, finalGrid[0][c]);
           } else {
             self._setSpriteSymbol(entering, ids[Math.floor(Math.random()*ids.length)]);
           }
           entering.setVisible(true);
+
+          if (self._spinPendingStop[c]) {
+            self._spinOffsets[c] = 0;
+            layoutReel(c);
+            self._spinLocked[c] = true;
+            self._spinPendingStop[c] = false;
+            try { if (!self._muted) Audio.play("reel_stop"); } catch(eStop2){}
+            break;
+          }
         }
 
         if (inLanding) {
@@ -2144,17 +2318,7 @@ var SlotScene = cc.Scene.extend({
           self._setSpriteSymbol(strip2.sprites[0], finalGrid[0][c]);
           self._setSpriteSymbol(strip2.sprites[rows + 1], finalGrid[rows - 1][c]);
 
-          // As we get very close, gently settle into perfect alignment
-          if (timeLeft <= 0.16) {
-            self._spinOffsets[c] = self._spinOffsets[c] * 0.60;
-            if (self._spinOffsets[c] < 0.75) self._spinOffsets[c] = 0;
-            layoutReel(c);
-            if (self._spinOffsets[c] === 0) {
-              self._spinLocked[c] = true;
-              try { if (!self._muted) Audio.play("reel_stop"); } catch(e){}
-              continue;
-            }
-          }
+          // Keep natural motion through stop; no pre-stop vertical snap/jerk.
         }
 
         layoutReel(c);
@@ -2283,6 +2447,7 @@ def build_dev_web_zip(
     paytable: dict,
     symbol_uploads: Optional[List[st.runtime.uploaded_file_manager.UploadedFile]] = None,
     ui_uploads: Optional[List[st.runtime.uploaded_file_manager.UploadedFile]] = None,
+    ui_uploads_named: Optional[List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]]] = None,
     audio_uploads: Optional[List[st.runtime.uploaded_file_manager.UploadedFile]] = None,
     help_texts: Optional[dict] = None,
     background_upload: Optional[st.runtime.uploaded_file_manager.UploadedFile] = None,
@@ -2349,7 +2514,10 @@ def build_dev_web_zip(
             sym_files = copy_uploaded_files(symbol_uploads or [], web / "res" / "assets" / "symbols")
 
         # UI images
-        ui_files = copy_uploaded_files(ui_uploads or [], web / "res" / "assets" / "ui")
+        if ui_uploads_named:
+            ui_files = copy_uploaded_files_named(ui_uploads_named, web / "res" / "assets" / "ui")
+        else:
+            ui_files = copy_uploaded_files(ui_uploads or [], web / "res" / "assets" / "ui")
 
         # Optional: auto-import shared dashboard UI files from local PGS-Igaming root.
         # Keep dashboard structure in output:
@@ -2371,7 +2539,13 @@ def build_dev_web_zip(
                 "btn_auto_active",
                 "btn_auto_spin", "btn_auto_spin_on", "btn_auto_spin_off",
                 "btn_auto_amt", "btn_auto_amt_on",
+                "btn_menu", "btn_menu_on", "btn_menu_off",
                 "btn_menu_close", "btn_menu_close_on", "btn_menu_close_off",
+                "btn_help", "btn_help_on",
+                "btn_vol_high", "btn_vol_high_on",
+                "btn_vol_off", "btn_vol_mute_on",
+                "btn_vol_low", "btn_vol_low_on",
+                "btn_vol_med", "btn_vol_med_on",
                 "btn_close_on_menu",
                 "btn_back", "btn_back_on",
                 "btn_quick_on", "btn_quick_off",

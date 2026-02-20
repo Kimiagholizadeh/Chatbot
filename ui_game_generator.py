@@ -328,6 +328,19 @@ def _step_assets() -> None:
     st.markdown("### Extra UI images (optional)")
     st.file_uploader("UI images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, key="ui_uploads")
 
+    st.markdown("### Reel frame image (optional)")
+    st.file_uploader("Reel frame", type=["png","jpg","jpeg","webp"], key="reel_frame_upload")
+
+    rf = st.session_state.get("reel_frame_upload")
+    if rf is not None:
+        st.session_state["reel_frame_upload_name"] = str(getattr(rf, "name", "reel_frame.png"))
+        st.session_state["reel_frame_upload_bytes"] = bytes(rf.getvalue())
+    rf_name = st.session_state.get("reel_frame_upload_name")
+    rf_bytes = st.session_state.get("reel_frame_upload_bytes")
+    if rf_name and rf_bytes:
+        st.caption(f"Reel frame selected: {rf_name}")
+        st.image(rf_bytes, caption=f"Selected reel frame preview: {rf_name}", use_container_width=True)
+
 
 def _step_localization() -> None:
     st.text_input("Languages (comma separated)", "en", key="langs_txt")
@@ -683,6 +696,15 @@ def _step_build() -> None:
     # uploads
     symbol_uploads_named = st.session_state.get("symbol_uploads_named", [])
     ui_uploads = st.session_state.get("ui_uploads") or []
+    ui_uploads_named: List[Tuple[st.runtime.uploaded_file_manager.UploadedFile, str]] = []
+    for f in ui_uploads:
+        ext = Path(getattr(f, "name", "ui.png")).suffix or ".png"
+        ui_uploads_named.append((f, getattr(f, "name", f"ui{ext}")))
+
+    if st.session_state.get("reel_frame_upload_name") and st.session_state.get("reel_frame_upload_bytes"):
+        rf_name = str(st.session_state["reel_frame_upload_name"])
+        rf_ext = Path(rf_name).suffix or ".png"
+        ui_uploads_named.append((_MemoryUpload(name=rf_name, data=bytes(st.session_state["reel_frame_upload_bytes"])), f"reel_frame{rf_ext}"))
     background_upload = st.session_state.get("bg_upload")
     # Prefer persisted bytes from Assets step (stable across reruns/navigation)
     if st.session_state.get("bg_upload_name") and st.session_state.get("bg_upload_bytes"):
@@ -745,6 +767,7 @@ def _step_build() -> None:
                     paytable=paytable,
                     symbol_uploads_named=symbol_uploads_named,
                     ui_uploads=ui_uploads,
+                    ui_uploads_named=ui_uploads_named or None,
                     audio_uploads=[],
                     help_texts=st.session_state.get("help_texts", {}),
                     background_upload=background_upload,

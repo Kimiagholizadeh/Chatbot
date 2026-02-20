@@ -1233,7 +1233,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 245, 230, 300, ["popup_panel_bg","auto_panel"], true);
+    this.ui.settingsPanel = this._makePanel(64, 220, 210, 280, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1264,7 +1264,7 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 84, "", function(){
+    this.ui.volumeButton = this._makeImageButton(0, 60, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
@@ -1278,40 +1278,40 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_vol_high"],
       on:["btn_vol_high_on","btn_vol_high"],
       off:["btn_vol_high","btn_vol_high_on"]
-    }, 116, 42);
+    }, 132, 48);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, 30, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(0, 6, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
       on:["btn_help_on","btn_help"],
       off:["btn_help","btn_help_on"]
-    }, 116, 42);
+    }, 132, 48);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, -24, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(0, -48, "SET", function(){
       self._toggleSettingsMenu(false);
-    }, 110, 38);
+    }, 126, 44);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, -78, "", function(){
+    this.ui.settingsCloseButton = this._makeImageButton(0, -102, "", function(){
       if (self.ui && self.ui.infoPanel && self.ui.infoPanel.isVisible && self.ui.infoPanel.isVisible()) self._toggleInfoPanel(false);
       else self._toggleSettingsMenu(false);
     }, {
       normal:["btn_menu_close"],
       on:["btn_menu_close_on","btn_menu_close"],
       off:["btn_menu_close_off","btn_menu_close"]
-    }, 116, 42);
+    }, 132, 48);
     this.ui.settingsPanel.addChild(this.ui.settingsCloseButton, 2);
 
-    this.ui.helpOverlayCloseButton = this._makeImageButton(64, 172, "", function(){
+    this.ui.helpOverlayCloseButton = this._makeImageButton(64, 118, "", function(){
       self._toggleInfoPanel(false);
     }, {
       normal:["btn_menu_close"],
       on:["btn_menu_close_on","btn_menu_close"],
       off:["btn_menu_close_off","btn_menu_close"]
-    }, 116, 42);
+    }, 132, 48);
     this.uiLayer.addChild(this.ui.helpOverlayCloseButton, 236);
     this.ui.helpOverlayCloseButton.setVisible(false);
 
@@ -1324,10 +1324,42 @@ var SlotScene = cc.Scene.extend({
     this.ui.infoPanelClose = this._makeButton(430, 244, "X", function(){ self._toggleInfoPanel(false); }, 54, 34);
     this.ui.infoPanel.addChild(this.ui.infoPanelClose);
     this.ui.infoPanelClose.setVisible(false);
-    this.ui.infoText = new cc.LabelTTF(this._getInfoText(), "Arial", 18, cc.size(860, 430), cc.TEXT_ALIGNMENT_LEFT, cc.VERTICAL_TEXT_ALIGNMENT_TOP);
-    this.ui.infoText.setAnchorPoint(0, 1);
-    this.ui.infoText.setPosition(-430, 210);
-    this.ui.infoPanel.addChild(this.ui.infoText);
+
+    this.ui.infoScroll = null;
+    if (typeof ccui !== "undefined" && ccui && ccui.ScrollView) {
+      var sv = new ccui.ScrollView();
+      sv.setDirection(ccui.ScrollView.DIR_VERTICAL);
+      sv.setBounceEnabled(true);
+      sv.setTouchEnabled(true);
+      sv.setContentSize(cc.size(820, 430));
+      sv.setPosition(-410, -205);
+      this.ui.infoPanel.addChild(sv);
+      this.ui.infoScroll = sv;
+
+      this.ui.infoText = new cc.LabelTTF(this._getInfoText(), "Arial", 18, cc.size(760, 2000), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_TOP);
+      this.ui.infoText.setAnchorPoint(0.5, 1);
+      try { sv.getInnerContainer().addChild(this.ui.infoText); } catch(e) { this.ui.infoPanel.addChild(this.ui.infoText); }
+    } else {
+      this.ui.infoText = new cc.LabelTTF(this._getInfoText(), "Arial", 18, cc.size(820, 430), cc.TEXT_ALIGNMENT_CENTER, cc.VERTICAL_TEXT_ALIGNMENT_TOP);
+      this.ui.infoText.setAnchorPoint(0.5, 1);
+      this.ui.infoText.setPosition(0, 210);
+      this.ui.infoPanel.addChild(this.ui.infoText);
+    }
+
+    this._layoutInfoContent = function(){
+      if (!self.ui || !self.ui.infoText) return;
+      if (self.ui.infoScroll && self.ui.infoScroll.setInnerContainerSize) {
+        var contentW = 820;
+        var contentH = 430;
+        var textH = 430;
+        try { textH = Math.max(430, Math.ceil(self.ui.infoText.getContentSize().height + 24)); } catch(e) {}
+        self.ui.infoScroll.setInnerContainerSize(cc.size(contentW, textH));
+        self.ui.infoText.setPosition(contentW * 0.5, textH - 12);
+        try { self.ui.infoScroll.scrollToTop(0.01, false); } catch(e) {}
+      } else {
+        self.ui.infoText.setPosition(0, 210);
+      }
+    };
 
     if (cc.DrawNode) {
       try { this.lineDraw = new cc.DrawNode(); this.gridLayer.addChild(this.lineDraw, 30); } catch (e) { this.lineDraw = null; }
@@ -1341,7 +1373,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(230, 300));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(210, 280));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;
@@ -1391,6 +1423,7 @@ var SlotScene = cc.Scene.extend({
     if (!this.ui || !this.ui.infoPanel) return;
     var show = (typeof forceOpen === "boolean") ? forceOpen : !this.ui.infoPanel.isVisible();
     if (show && this.ui.infoText && this.ui.infoText.setString) this.ui.infoText.setString(this._getInfoText());
+    if (show && this._layoutInfoContent) this._layoutInfoContent();
     this.ui.infoPanel.setVisible(show);
 
     if (show) {

@@ -1227,7 +1227,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(480, 270, 240, 510, ["popup_panel_bg","auto_panel"]);
+    this.ui.settingsPanel = this._makePanel(64, 300, 210, 520, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1258,11 +1258,13 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 118, "", function(){
+    this.ui.volumeButton = this._makeImageButton(0, 164, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
-      if (cur === "mute") next = "high";
+      if (cur === "mute") next = "low";
+      else if (cur === "low") next = "med";
+      else if (cur === "med") next = "high";
       else next = "mute";
       self._applyVolumeMode(next);
       self._refreshVolumeButtonSkin();
@@ -1270,43 +1272,43 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_vol_high"],
       on:["btn_vol_high_on","btn_vol_high"],
       off:["btn_vol_high","btn_vol_high_on"]
-    }, 82, 30);
+    }, 78, 28);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, 80, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(0, 132, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
       on:["btn_help_on","btn_help"],
       off:["btn_help","btn_help_on"]
-    }, 82, 30);
+    }, 78, 28);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, 42, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(0, 100, "SET", function(){
       self._toggleSettingsMenu(false);
-    }, 82, 28);
+    }, 78, 26);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, 6, "", function(){
+    this.ui.settingsCloseButton = this._makeImageButton(0, 68, "", function(){
       self._toggleSettingsMenu(false);
     }, {
       normal:["btn_menu_close"],
       on:["btn_menu_close_on","btn_menu_close"],
       off:["btn_menu_close_off","btn_menu_close"]
-    }, 82, 30);
+    }, 78, 28);
     this.ui.settingsPanel.addChild(this.ui.settingsCloseButton, 2);
 
     this._applyVolumeMode("high");
     this._refreshVolumeButtonSkin();
 
-    this.ui.infoPanel = this._makePanel(480, 270, 680, 330, ["popup_panel_bg","help_popup_panel"]);
+    this.ui.infoPanel = this._makePanel(480, 270, 960, 540, ["popup_panel_bg","help_popup_panel"]);
     this.uiLayer.addChild(this.ui.infoPanel, 230);
     this.ui.infoPanel.setVisible(false);
-    this.ui.infoPanelClose = this._makeButton(300, 140, "X", function(){ self._toggleInfoPanel(false); }, 52, 32);
+    this.ui.infoPanelClose = this._makeButton(430, 244, "X", function(){ self._toggleInfoPanel(false); }, 54, 34);
     this.ui.infoPanel.addChild(this.ui.infoPanelClose);
-    this.ui.infoText = new cc.LabelTTF(this._getInfoText(), "Arial", 16, cc.size(610, 250), cc.TEXT_ALIGNMENT_LEFT, cc.VERTICAL_TEXT_ALIGNMENT_TOP);
+    this.ui.infoText = new cc.LabelTTF(this._getInfoText(), "Arial", 18, cc.size(860, 430), cc.TEXT_ALIGNMENT_LEFT, cc.VERTICAL_TEXT_ALIGNMENT_TOP);
     this.ui.infoText.setAnchorPoint(0, 1);
-    this.ui.infoText.setPosition(-300, 120);
+    this.ui.infoText.setPosition(-430, 210);
     this.ui.infoPanel.addChild(this.ui.infoText);
 
     if (cc.DrawNode) {
@@ -1321,7 +1323,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(240, 510));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(210, 520));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;

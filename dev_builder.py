@@ -1000,10 +1000,10 @@ var SlotScene = cc.Scene.extend({
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
-    var spinAnchor = cc.p(914, 220);
-    var speedAnchor = cc.p(878, 134);
-    var betAnchor  = cc.p(950, 134);
-    var autoAnchor = cc.p(914, 50);
+    var spinAnchor = cc.p(850, 216);
+    var speedAnchor = cc.p(814, 128);
+    var betAnchor  = cc.p(886, 128);
+    var autoAnchor = cc.p(850, 48);
     var popupCenter = cc.p(480, 165);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -1083,8 +1083,8 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoStopButton.setVisible(false);
 
     // Bet popup should be clearly horizontal (~2:1 width:height).
-    this._betPanelSize = cc.size(900, 440);
-    this._autoPanelSize = cc.size(700, 500);
+    this._betPanelSize = cc.size(940, 460);
+    this._autoPanelSize = cc.size(760, 520);
 
     this.ui.betInfoPanel = new cc.Node();
     this.ui.betInfoPanel.setPosition(popupCenter);
@@ -1312,7 +1312,7 @@ var SlotScene = cc.Scene.extend({
         var closedAny = false;
 
         if (self._betPanelOpen && self.ui && self.ui.betInfoPanel && self.ui.betInfoPanel.isVisible && self.ui.betInfoPanel.isVisible()) {
-          var insideBet = self._isWorldPointInsideNodeRect(self.ui.betInfoPanel, worldPoint, self._betPanelSize || cc.size(900, 440));
+          var insideBet = self._isWorldPointInsideNodeRect(self.ui.betInfoPanel, worldPoint, self._betPanelSize || cc.size(940, 460));
           if (!insideBet) {
             self._closeBetPanel();
             closedAny = true;
@@ -1320,7 +1320,7 @@ var SlotScene = cc.Scene.extend({
         }
 
         if (self._autoPanelOpen && self.ui && self.ui.autoPanelInfo && self.ui.autoPanelInfo.isVisible && self.ui.autoPanelInfo.isVisible()) {
-          var insideAuto = self._isWorldPointInsideNodeRect(self.ui.autoPanelInfo, worldPoint, self._autoPanelSize || cc.size(700, 500));
+          var insideAuto = self._isWorldPointInsideNodeRect(self.ui.autoPanelInfo, worldPoint, self._autoPanelSize || cc.size(760, 520));
           if (!insideAuto) {
             self._closeAutoPanel();
             closedAny = true;
@@ -1622,12 +1622,12 @@ var SlotScene = cc.Scene.extend({
 
     // Layout that stays aligned for any 3..7 reels and 3..6 rows.
     // Keep reels larger than original while guaranteeing they stay inside the frame area.
-    var baseCellW = 166;
-    var baseCellH = 124;
+    var baseCellW = 144;
+    var baseCellH = 114;
 
     // Scale down automatically for larger reel/row combinations so gameplay never clips/offscreens.
-    var maxGridW = 820;
-    var maxGridH = 360;
+    var maxGridW = 740;
+    var maxGridH = 336;
     var fitScaleW = maxGridW / Math.max(1, reels * baseCellW);
     var fitScaleH = maxGridH / Math.max(1, rows * baseCellH);
     var fitScale = Math.min(1, fitScaleW, fitScaleH);
@@ -2177,17 +2177,7 @@ var SlotScene = cc.Scene.extend({
           self._setSpriteSymbol(strip2.sprites[0], finalGrid[0][c]);
           self._setSpriteSymbol(strip2.sprites[rows + 1], finalGrid[rows - 1][c]);
 
-          // As we get very close, gently settle into perfect alignment
-          if (timeLeft <= 0.16) {
-            self._spinOffsets[c] = self._spinOffsets[c] * 0.60;
-            if (self._spinOffsets[c] < 0.75) self._spinOffsets[c] = 0;
-            layoutReel(c);
-            if (self._spinOffsets[c] === 0) {
-              self._spinLocked[c] = true;
-              try { if (!self._muted) Audio.play("reel_stop"); } catch(e){}
-              continue;
-            }
-          }
+          // Keep natural motion through stop; no pre-stop vertical snap/jerk.
         }
 
         layoutReel(c);

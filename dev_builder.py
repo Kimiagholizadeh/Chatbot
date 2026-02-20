@@ -1003,8 +1003,8 @@ var SlotScene = cc.Scene.extend({
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
     var spinAnchor = cc.p(886, 210);
-    var speedAnchor = cc.p(858, 122);
-    var betAnchor  = cc.p(912, 122);
+    var speedAnchor = cc.p(852, 122);
+    var betAnchor  = cc.p(918, 122);
     var autoAnchor = cc.p(888, 64);
     var popupCenter = cc.p(480, 165);
 
@@ -1674,7 +1674,7 @@ var SlotScene = cc.Scene.extend({
       var gridCenterY = startY + ((rows - 1) * cellH) / 2;
       gridFrame.setPosition(gridCenterX, gridCenterY);
       // Add generous padding so frame encloses spinning/landing motion across all reel counts.
-      var framePadX = Math.max(22, Math.floor(cellW * 0.36));
+      var framePadX = Math.max(30, Math.floor(cellW * 0.56));
       var framePadY = Math.max(20, Math.floor(cellH * 0.34));
       var gridCoverW = ((reels - 1) * cellW + frameW) + framePadX * 2;
       var gridCoverH = ((rows - 1) * cellH + frameH) + framePadY * 2;
@@ -1970,9 +1970,9 @@ var SlotScene = cc.Scene.extend({
 
     if (!this._muted) { try { Audio.play("spin"); } catch(e){} }
 
-    var spinSec = 3.0;
-    if (this._spinMode === "quick") spinSec = 1.8;
-    if (this._spinMode === "turbo") spinSec = 1.0;
+    var spinSec = 3.0;  // normal speed
+    if (this._spinMode === "quick") spinSec = 1.8; // faster
+    if (this._spinMode === "turbo") spinSec = 1.0; // very fast (~1s)
 
     // Spin then land exactly on res.grid (no symbol swapping after stop)
     var safeGrid = this._normalizeGridForSpin(res && res.grid ? res.grid : null);
@@ -2126,7 +2126,12 @@ var SlotScene = cc.Scene.extend({
     }
 
     var cellH = this._cellH || 90;
-    var baseSpeed = 980;       // faster reel spin with more visible rounds
+    var mode = this._spinMode || "normal";
+    var modeSpeedMul = 1.0;
+    if (mode === "quick") modeSpeedMul = 1.30;
+    else if (mode === "turbo") modeSpeedMul = 1.65;
+
+    var baseSpeed = 980 * modeSpeedMul; // mode-aware spin speed: normal < quick < turbo
     var landWindow = 0.36;     // keep reels at normal speed longer; short final decel only
     var clipTop = (rows - 1) * cellH + cellH * 0.48;
     var clipBot = -cellH * 0.48;

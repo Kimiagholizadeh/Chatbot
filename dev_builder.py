@@ -1233,7 +1233,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 220, 230, 920, ["popup_panel_bg","auto_panel"], true);
+    this.ui.settingsPanel = this._makePanel(64, 250, 230, 320, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1264,7 +1264,7 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 120, "", function(){
+    this.ui.volumeButton = this._makeImageButton(0, 84, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
@@ -1281,7 +1281,7 @@ var SlotScene = cc.Scene.extend({
     }, 116, 42);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, 56, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(0, 30, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
@@ -1290,19 +1290,30 @@ var SlotScene = cc.Scene.extend({
     }, 116, 42);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, -8, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(0, -24, "SET", function(){
       self._toggleSettingsMenu(false);
     }, 110, 38);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, -72, "", function(){
-      self._toggleSettingsMenu(false);
+    this.ui.settingsCloseButton = this._makeImageButton(0, -78, "", function(){
+      if (self.ui && self.ui.infoPanel && self.ui.infoPanel.isVisible && self.ui.infoPanel.isVisible()) self._toggleInfoPanel(false);
+      else self._toggleSettingsMenu(false);
     }, {
       normal:["btn_menu_close"],
       on:["btn_menu_close_on","btn_menu_close"],
       off:["btn_menu_close_off","btn_menu_close"]
     }, 116, 42);
     this.ui.settingsPanel.addChild(this.ui.settingsCloseButton, 2);
+
+    this.ui.helpOverlayCloseButton = this._makeImageButton(64, 172, "", function(){
+      self._toggleInfoPanel(false);
+    }, {
+      normal:["btn_menu_close"],
+      on:["btn_menu_close_on","btn_menu_close"],
+      off:["btn_menu_close_off","btn_menu_close"]
+    }, 116, 42);
+    this.uiLayer.addChild(this.ui.helpOverlayCloseButton, 236);
+    this.ui.helpOverlayCloseButton.setVisible(false);
 
     this._applyVolumeMode("high");
     this._refreshVolumeButtonSkin();
@@ -1329,7 +1340,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(230, 920));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(230, 320));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;
@@ -1386,11 +1397,13 @@ var SlotScene = cc.Scene.extend({
       if (this.ui && this.ui.settingsPanel) this.ui.settingsPanel.setVisible(false);
       if (this.ui && this.ui.settingsOverlay) this.ui.settingsOverlay.setVisible(false);
       if (this.ui && this.ui.settingsButton) this.ui.settingsButton.setVisible(false);
+      if (this.ui && this.ui.helpOverlayCloseButton) this.ui.helpOverlayCloseButton.setVisible(true);
     } else {
       var restoreSettings = !!this._settingsWasVisibleBeforeHelp;
       if (this.ui && this.ui.settingsPanel) this.ui.settingsPanel.setVisible(restoreSettings);
       if (this.ui && this.ui.settingsOverlay) this.ui.settingsOverlay.setVisible(restoreSettings);
       if (this.ui && this.ui.settingsButton) this.ui.settingsButton.setVisible(!restoreSettings);
+      if (this.ui && this.ui.helpOverlayCloseButton) this.ui.helpOverlayCloseButton.setVisible(false);
       this._settingsWasVisibleBeforeHelp = false;
     }
   },

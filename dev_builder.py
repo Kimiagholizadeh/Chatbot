@@ -1221,7 +1221,13 @@ var SlotScene = cc.Scene.extend({
     }, 70, 70);
     this.uiLayer.addChild(this.ui.settingsButton);
 
-    this.ui.settingsPanel = this._makePanel(64, 236, 190, 410, ["popup_panel_bg","auto_panel"]);
+    this.ui.settingsOverlay = new cc.LayerColor(cc.color(6, 10, 22, 170), 960, 540);
+    if (this.ui.settingsOverlay.setIgnoreAnchorPointForPosition) this.ui.settingsOverlay.setIgnoreAnchorPointForPosition(false);
+    this.ui.settingsOverlay.setPosition(0, 0);
+    this.uiLayer.addChild(this.ui.settingsOverlay, 218);
+    this.ui.settingsOverlay.setVisible(false);
+
+    this.ui.settingsPanel = this._makePanel(64, 236, 182, 470, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1252,7 +1258,7 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState(self.ui.volumeButton._disabled ? "off" : "normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 112, "", function(){
+    this.ui.volumeButton = this._makeImageButton(0, 132, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
@@ -1266,30 +1272,30 @@ var SlotScene = cc.Scene.extend({
       normal:["btn_vol_high"],
       on:["btn_vol_high_on","btn_vol_high"],
       off:["btn_vol_high","btn_vol_high_on"]
-    }, 122, 56);
+    }, 104, 46);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, 44, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(0, 62, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
       on:["btn_help_on","btn_help"],
       off:["btn_help","btn_help_on"]
-    }, 122, 56);
+    }, 104, 46);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, -24, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(0, -8, "SET", function(){
       self._toggleSettingsMenu(false);
-    }, 122, 44);
+    }, 104, 40);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, -94, "", function(){
+    this.ui.settingsCloseButton = this._makeImageButton(0, -78, "", function(){
       self._toggleSettingsMenu(false);
     }, {
       normal:["btn_menu_close"],
       on:["btn_menu_close_on","btn_menu_close"],
       off:["btn_menu_close_off","btn_menu_close"]
-    }, 122, 56);
+    }, 104, 46);
     this.ui.settingsPanel.addChild(this.ui.settingsCloseButton, 2);
 
     this._applyVolumeMode("high");
@@ -1310,6 +1316,23 @@ var SlotScene = cc.Scene.extend({
     }
     if (!this.lineDraw) this.lineDraw = { clear:function(){}, drawSegment:function(){} };
 
+    if (this.ui && this.ui.settingsOverlay) {
+      cc.eventManager.addListener({
+        event: cc.EventListener.TOUCH_ONE_BY_ONE,
+        swallowTouches: true,
+        onTouchBegan: function(t){
+          if (!self.ui.settingsOverlay.isVisible()) return false;
+          var wp = t.getLocation();
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(182, 470));
+          if (!insidePanel) {
+            self._toggleSettingsMenu(false);
+            return true;
+          }
+          return false;
+        }
+      }, this.ui.settingsOverlay);
+    }
+
     this.setSpinMode("normal");
     this._refreshControlStates();
     this._refreshUI();
@@ -1318,6 +1341,7 @@ var SlotScene = cc.Scene.extend({
   _toggleSettingsMenu: function(forceOpen){
     var show = (typeof forceOpen === "boolean") ? forceOpen : !(this.ui && this.ui.settingsPanel && this.ui.settingsPanel.isVisible());
     if (this.ui && this.ui.settingsPanel) this.ui.settingsPanel.setVisible(show);
+    if (this.ui && this.ui.settingsOverlay) this.ui.settingsOverlay.setVisible(show);
     // While popup menu is open, hide the menu trigger button.
     if (this.ui && this.ui.settingsButton) this.ui.settingsButton.setVisible(!show);
     if (!show) this._toggleInfoPanel(false);

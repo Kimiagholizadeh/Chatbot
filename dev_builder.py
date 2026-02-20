@@ -1002,7 +1002,7 @@ var SlotScene = cc.Scene.extend({
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
     // spin top, speed+bet middle row, auto bottom row.
-    var spinAnchor = cc.p(888, 210);
+    var spinAnchor = cc.p(886, 210);
     var speedAnchor = cc.p(850, 122);
     var betAnchor  = cc.p(922, 122);
     var autoAnchor = cc.p(888, 64);
@@ -1104,17 +1104,18 @@ var SlotScene = cc.Scene.extend({
       this.ui.betInfoPanel._hitBg = betBg;
     }
 
+    var betHeaderY = (this._betPanelSize.height * 0.5) - 34;
     var betHeaderPanelPath = this._uiAsset(["popup_header_panel"]);
     if (betHeaderPanelPath) {
       var betHeaderPanel = new cc.Sprite(betHeaderPanelPath);
-      betHeaderPanel.setPosition(0, 126);
-      this._fitSpriteTo(betHeaderPanel, 320, 58, false);
+      betHeaderPanel.setPosition(0, betHeaderY);
+      this._fitSpriteTo(betHeaderPanel, 360, 64, false);
       this.ui.betInfoPanel.addChild(betHeaderPanel, 1);
     }
 
-    this.ui.betHeader = new cc.LabelTTF("PLAY LEVEL", "Arial", 17);
-    this.ui.betHeader.setColor(frameNumberColor);
-    this.ui.betHeader.setPosition(0, 126);
+    this.ui.betHeader = new cc.LabelTTF("PLAY BET", "Arial", 17);
+    this.ui.betHeader.setColor(cc.color(255,255,255));
+    this.ui.betHeader.setPosition(0, betHeaderY);
     this.ui.betInfoPanel.addChild(this.ui.betHeader, 2);
 
     this.ui.betPanel_decBet = this._makeImageButton(-118, 14, "", function(){ self.onDecreaseBetClick(); }, { normal:["btn_bet_minus"], on:["btn_bet_minus_on","btn_bet_minus"], off:["btn_bet_minus_off","btn_bet_minus"] }, 62, 62);
@@ -1159,17 +1160,18 @@ var SlotScene = cc.Scene.extend({
       this.ui.autoPanelInfo._hitBg = autoBg;
     }
 
+    var autoHeaderY = (this._autoPanelSize.height * 0.5) - 34;
     var autoHeaderPanelPath = this._uiAsset(["popup_header_panel"]);
     if (autoHeaderPanelPath) {
       var autoHeaderPanel = new cc.Sprite(autoHeaderPanelPath);
-      autoHeaderPanel.setPosition(0, 178);
-      this._fitSpriteTo(autoHeaderPanel, 320, 72, false);
+      autoHeaderPanel.setPosition(0, autoHeaderY);
+      this._fitSpriteTo(autoHeaderPanel, 360, 64, false);
       this.ui.autoPanelInfo.addChild(autoHeaderPanel, 1);
     }
 
     this.ui.autoPlayHeader = new cc.LabelTTF("AUTO PLAY", "Arial", 17);
-    this.ui.autoPlayHeader.setColor(frameNumberColor);
-    this.ui.autoPlayHeader.setPosition(0, 178);
+    this.ui.autoPlayHeader.setColor(cc.color(255,255,255));
+    this.ui.autoPlayHeader.setPosition(0, autoHeaderY);
     this.ui.autoPanelInfo.addChild(this.ui.autoPlayHeader, 2);
 
     this.ui.btnTurboSpin = this._makeImageButton(-125, 132, "", function(){ self.onTurboSpinButtonClick(); }, { normal:["btn_turbo_off","btn_speed_turbo"], on:["btn_turbo","btn_speed_turbo_on","btn_speed_turbo"], off:["btn_turbo_off","btn_speed_turbo"] }, 72, 38);

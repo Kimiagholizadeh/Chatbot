@@ -1227,7 +1227,7 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsOverlay, 218);
     this.ui.settingsOverlay.setVisible(false);
 
-    this.ui.settingsPanel = this._makePanel(64, 240, 180, 560, ["popup_panel_bg","auto_panel"]);
+    this.ui.settingsPanel = this._makePanel(64, 200, 180, 980, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1258,7 +1258,7 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 90, "", function(){
+    this.ui.volumeButton = this._makeImageButton(0, 10, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
@@ -1275,7 +1275,7 @@ var SlotScene = cc.Scene.extend({
     }, 116, 42);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, 44, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(0, -44, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
@@ -1284,12 +1284,12 @@ var SlotScene = cc.Scene.extend({
     }, 116, 42);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, -2, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(0, -98, "SET", function(){
       self._toggleSettingsMenu(false);
     }, 110, 38);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, -48, "", function(){
+    this.ui.settingsCloseButton = this._makeImageButton(0, -152, "", function(){
       self._toggleSettingsMenu(false);
     }, {
       normal:["btn_menu_close"],
@@ -1323,7 +1323,7 @@ var SlotScene = cc.Scene.extend({
         onTouchBegan: function(t){
           if (!self.ui.settingsOverlay.isVisible()) return false;
           var wp = t.getLocation();
-          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(180, 560));
+          var insidePanel = self._isWorldPointInsideNodeRect(self.ui.settingsPanel, wp, cc.size(180, 980));
           if (!insidePanel) {
             self._toggleSettingsMenu(false);
             return true;
@@ -1344,7 +1344,6 @@ var SlotScene = cc.Scene.extend({
     if (this.ui && this.ui.settingsOverlay) this.ui.settingsOverlay.setVisible(show);
     // While popup menu is open, hide the menu trigger button.
     if (this.ui && this.ui.settingsButton) this.ui.settingsButton.setVisible(!show);
-    if (!show) this._toggleInfoPanel(false);
   },
 
   _getInfoText: function(){
@@ -1375,7 +1374,19 @@ var SlotScene = cc.Scene.extend({
     var show = (typeof forceOpen === "boolean") ? forceOpen : !this.ui.infoPanel.isVisible();
     if (show && this.ui.infoText && this.ui.infoText.setString) this.ui.infoText.setString(this._getInfoText());
     this.ui.infoPanel.setVisible(show);
-    if (show) this._toggleSettingsMenu(true);
+
+    if (show) {
+      this._settingsWasVisibleBeforeHelp = !!(this.ui && this.ui.settingsPanel && this.ui.settingsPanel.isVisible());
+      if (this.ui && this.ui.settingsPanel) this.ui.settingsPanel.setVisible(false);
+      if (this.ui && this.ui.settingsOverlay) this.ui.settingsOverlay.setVisible(false);
+      if (this.ui && this.ui.settingsButton) this.ui.settingsButton.setVisible(false);
+    } else {
+      var restoreSettings = !!this._settingsWasVisibleBeforeHelp;
+      if (this.ui && this.ui.settingsPanel) this.ui.settingsPanel.setVisible(restoreSettings);
+      if (this.ui && this.ui.settingsOverlay) this.ui.settingsOverlay.setVisible(restoreSettings);
+      if (this.ui && this.ui.settingsButton) this.ui.settingsButton.setVisible(!restoreSettings);
+      this._settingsWasVisibleBeforeHelp = false;
+    }
   },
 
   _isWorldPointInsideNodeRect: function(node, worldPoint, fallbackSize){

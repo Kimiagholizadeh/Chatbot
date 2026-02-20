@@ -655,6 +655,7 @@ var SlotScene = cc.Scene.extend({
     // audio
     this._muted = false;
     this._audioUnlocked = false;
+    this._volumeMode = "high"; // high|mute|low|med
 
     // draw
     this.lineDraw = null;
@@ -1209,36 +1210,90 @@ var SlotScene = cc.Scene.extend({
 
     this._registerPopupOutsideClick();
 
-    // Settings / info controls (top-right) so audio + help are always available.
-    this.ui.settingsButton = this._makeImageButton(64, 58, "SET", function(){
+    // Settings menu button + slim vertical popup above it.
+    this.ui.settingsButton = this._makeImageButton(64, 58, "", function(){
       self._unlockAudioOnce();
       self._toggleSettingsMenu();
     }, {
-      normal:["btn_setting","btn_settings","btn_menu"],
-      on:["btn_setting_on","btn_settings_on","btn_menu_on","btn_setting"],
-      off:["btn_setting_off","btn_settings_off","btn_menu_off","btn_setting"]
+      normal:["btn_menu"],
+      on:["btn_menu_on","btn_menu"],
+      off:["btn_menu_off","btn_menu"]
     }, 70, 70);
     this.uiLayer.addChild(this.ui.settingsButton);
 
-    this.ui.settingsPanel = new cc.Node();
-    this.ui.settingsPanel.setPosition(154, 118);
+    this.ui.settingsPanel = this._makePanel(64, 212, 170, 320, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
-    this.ui.audioButton = this._makeButton(0, 0, "AUDIO: ON", function(){
-      self._unlockAudioOnce();
-      self._muted = !self._muted;
-      if (self.ui && self.ui.audioButton && self.ui.audioButton._label) {
-        self.ui.audioButton._label.setString(self._muted ? "AUDIO: OFF" : "AUDIO: ON");
-      }
-      try { Audio.unlock(); } catch(e){}
-    }, 160, 34);
-    this.ui.settingsPanel.addChild(this.ui.audioButton);
+    this._applyVolumeMode = function(mode){
+      self._volumeMode = mode || "high";
+      var vol = 1.0;
+      self._muted = false;
+      if (self._volumeMode === "mute") { vol = 0.0; self._muted = true; }
+      else if (self._volumeMode === "low") vol = 0.35;
+      else if (self._volumeMode === "med") vol = 0.65;
+      else vol = 1.0;
+      try { cc.audioEngine.setEffectsVolume(vol); } catch(e){}
+    };
 
-    this.ui.infoButton = this._makeButton(0, -44, "INFO", function(){
+    this._refreshVolumeButtonSkin = function(){
+      if (!self.ui || !self.ui.volumeButton) return;
+      var mode = self._volumeMode || "high";
+      var base = "btn_vol_high";
+      var over = "btn_vol_high_on";
+      if (mode === "mute") { base = "btn_vol_off"; over = "btn_vol_mute_on"; }
+      else if (mode === "low") { base = "btn_vol_low"; over = "btn_vol_low_on"; }
+      else if (mode === "med") { base = "btn_vol_med"; over = "btn_vol_med_on"; }
+      self.ui.volumeButton._img = {
+        normal: self._uiAsset([base, over]),
+        on: self._uiAsset([over, base]),
+        off: self._uiAsset([base, over])
+      };
+      if (self.ui.volumeButton._setState) self.ui.volumeButton._setState(self.ui.volumeButton._disabled ? "off" : "normal");
+    };
+
+    this.ui.volumeButton = this._makeImageButton(0, 112, "", function(){
+      self._unlockAudioOnce();
+      var cur = self._volumeMode || "high";
+      var next = "high";
+      if (cur === "high") next = "mute";
+      else if (cur === "mute") next = "low";
+      else if (cur === "low") next = "med";
+      else next = "high";
+      self._applyVolumeMode(next);
+      self._refreshVolumeButtonSkin();
+    }, {
+      normal:["btn_vol_high"],
+      on:["btn_vol_high_on","btn_vol_high"],
+      off:["btn_vol_high","btn_vol_high_on"]
+    }, 122, 56);
+    this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
+
+    this.ui.helpMenuButton = this._makeImageButton(0, 44, "", function(){
       self._toggleInfoPanel();
-    }, 160, 34);
-    this.ui.settingsPanel.addChild(this.ui.infoButton);
+    }, {
+      normal:["btn_help"],
+      on:["btn_help_on","btn_help"],
+      off:["btn_help","btn_help_on"]
+    }, 122, 56);
+    this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
+
+    this.ui.settingsTextButton = this._makeButton(0, -24, "SET", function(){
+      self._toggleSettingsMenu(false);
+    }, 122, 44);
+    this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
+
+    this.ui.settingsCloseButton = this._makeImageButton(0, -94, "", function(){
+      self._toggleSettingsMenu(false);
+    }, {
+      normal:["btn_menu_close"],
+      on:["btn_menu_close_on","btn_menu_close"],
+      off:["btn_menu_close_off","btn_menu_close"]
+    }, 122, 56);
+    this.ui.settingsPanel.addChild(this.ui.settingsCloseButton, 2);
+
+    this._applyVolumeMode("high");
+    this._refreshVolumeButtonSkin();
 
     this.ui.infoPanel = this._makePanel(480, 270, 680, 330, ["popup_panel_bg","help_popup_panel"]);
     this.uiLayer.addChild(this.ui.infoPanel, 230);
@@ -1516,6 +1571,7 @@ var SlotScene = cc.Scene.extend({
     if (this.ui && this.ui.betPanelButton) this._setButtonDisabled(this.ui.betPanelButton, !!(this.busy || this._autoPanelOpen));
     if (this.ui && this.ui.speedModeButton) this._setButtonDisabled(this.ui.speedModeButton, !!(this.busy || this._autoPanelOpen || this._betPanelOpen));
     if (this.ui && this.ui.autoButton) this._setButtonDisabled(this.ui.autoButton, !!(this.busy || this._betPanelOpen));
+    if (this.ui && this.ui.settingsButton) this._setButtonDisabled(this.ui.settingsButton, !!(this.busy || this._spinActive || this._autoPanelOpen || this._betPanelOpen));
 
     var canAutoStart = (this._autoRemaining || 0) > 0;
     if (this.ui && this.ui.btnAutoSpin) this._setButtonDisabled(this.ui.btnAutoSpin, !canAutoStart);

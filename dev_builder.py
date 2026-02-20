@@ -1083,8 +1083,8 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoStopButton.setVisible(false);
 
     // Bet popup should be clearly horizontal (~2:1 width:height).
-    this._betPanelSize = cc.size(840, 420);
-    this._autoPanelSize = cc.size(520, 430);
+    this._betPanelSize = cc.size(900, 440);
+    this._autoPanelSize = cc.size(700, 500);
 
     this.ui.betInfoPanel = new cc.Node();
     this.ui.betInfoPanel.setPosition(popupCenter);
@@ -1140,7 +1140,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.betInfoPanel.addChild(this.ui.betPanelText);
 
     this.ui.autoPanelInfo = new cc.Node();
-    this.ui.autoPanelInfo.setPosition(cc.p(480, 230));
+    this.ui.autoPanelInfo.setPosition(cc.p(480, 220));
     this.uiLayer.addChild(this.ui.autoPanelInfo, 200);
     this.ui.autoPanelInfo.setVisible(false);
 
@@ -1304,7 +1304,7 @@ var SlotScene = cc.Scene.extend({
     if (this._popupOutsideListenerRegistered) return;
     this._popupOutsideListenerRegistered = true;
 
-    cc.eventManager.addListener({
+    var outsideClickListener = {
       event: cc.EventListener.TOUCH_ONE_BY_ONE,
       swallowTouches: true,
       onTouchBegan: function(t){
@@ -1312,7 +1312,7 @@ var SlotScene = cc.Scene.extend({
         var closedAny = false;
 
         if (self._betPanelOpen && self.ui && self.ui.betInfoPanel && self.ui.betInfoPanel.isVisible && self.ui.betInfoPanel.isVisible()) {
-          var insideBet = self._isWorldPointInsideNodeRect(self.ui.betInfoPanel, worldPoint, self._betPanelSize || cc.size(520, 360));
+          var insideBet = self._isWorldPointInsideNodeRect(self.ui.betInfoPanel, worldPoint, self._betPanelSize || cc.size(900, 440));
           if (!insideBet) {
             self._closeBetPanel();
             closedAny = true;
@@ -1329,7 +1329,10 @@ var SlotScene = cc.Scene.extend({
 
         return closedAny;
       }
-    }, this.uiLayer);
+    };
+
+    // Fixed priority keeps this listener active even when other controls swallow touches.
+    cc.eventManager.addListener(outsideClickListener, -128);
   },
 
   _setSpinButtonsState: function(spinning){
@@ -1653,8 +1656,8 @@ var SlotScene = cc.Scene.extend({
       var gridCenterY = startY + ((rows - 1) * cellH) / 2;
       gridFrame.setPosition(gridCenterX, gridCenterY);
       // Add generous padding so frame encloses spinning/landing motion across all reel counts.
-      var gridCoverW = ((reels - 1) * cellW + frameW) + 44;
-      var gridCoverH = ((rows - 1) * cellH + frameH) + 48;
+      var gridCoverW = ((reels - 1) * cellW + frameW) + 220;
+      var gridCoverH = ((rows - 1) * cellH + frameH) + 140;
       this._fitSpriteTo(gridFrame, gridCoverW, gridCoverH, false);
       this.gridLayer.addChild(gridFrame, 1);
 
@@ -1923,9 +1926,9 @@ var SlotScene = cc.Scene.extend({
 
     if (!this._muted) { try { Audio.play("spin"); } catch(e){} }
 
-    var spinSec = 3.0;
-    if (this._spinMode === "quick") spinSec = 2.0;
-    if (this._spinMode === "turbo") spinSec = 1.35;
+    var spinSec = 3.6;
+    if (this._spinMode === "quick") spinSec = 2.4;
+    if (this._spinMode === "turbo") spinSec = 1.8;
 
     // Spin then land exactly on res.grid (no symbol swapping after stop)
     var safeGrid = this._normalizeGridForSpin(res && res.grid ? res.grid : null);
@@ -2076,10 +2079,10 @@ var SlotScene = cc.Scene.extend({
     }
 
     var cellH = this._cellH || 90;
-    var baseSpeed = 860;       // faster reel spin with multiple visible rounds
+    var baseSpeed = 980;       // faster reel spin with more visible rounds
     var landWindow = 0.70;     // still smooth but less floaty near stop
-    var clipTop = (rows - 1) * cellH + cellH * 0.45;
-    var clipBot = -cellH * 0.45;
+    var clipTop = (rows - 1) * cellH + cellH * 0.02;
+    var clipBot = -cellH * 0.02;
 
     function layoutReel(reelIndex){
       var strip = self.reelStrips[reelIndex];

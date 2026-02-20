@@ -967,12 +967,13 @@ var SlotScene = cc.Scene.extend({
     this.ui.paylineInfo = paylineInfo;
     this.ui.paylineInfo.setVisible(false);
 
-    var winBreakdown = new cc.LabelTTF("", "Arial", 13);
-    winBreakdown.setAnchorPoint(1, 1);
-    winBreakdown.setPosition(940, 455);
-    this.uiLayer.addChild(winBreakdown);
+    var winBreakdown = new cc.LabelTTF("", "Arial", 10);
+    winBreakdown.setAnchorPoint(0.5, 0);
+    winBreakdown.setPosition(480, 66);
+    winBreakdown.setColor(cc.color(255, 255, 255));
+    this.uiLayer.addChild(winBreakdown, 7);
     this.ui.winBreakdown = winBreakdown;
-    this.ui.winBreakdown.setVisible(false);
+    this.ui.winBreakdown.setVisible(true);
 
     var uiBarPath = this._uiAsset(["ui_bar"]);
     if (uiBarPath) {
@@ -2037,15 +2038,15 @@ var SlotScene = cc.Scene.extend({
   },
 
   _formatWinBreakdown: function(wins){
-    if (!wins || !wins.length) return I18N.t("no_line_wins", "No line wins");
+    if (!wins || !wins.length) return "";
     var out = [];
     for (var i=0; i<wins.length; i++){
       var w = wins[i];
       if (!w || w.type !== "line") continue;
-      out.push("L" + (w.lineIndex + 1) + ": " + w.amount.toFixed(2));
-      if (out.length >= 6) break;
+      out.push("Line " + (w.lineIndex + 1) + " pays " + w.amount.toFixed(2));
+      if (out.length >= 3) break;
     }
-    return out.length ? out.join("\n") : I18N.t("no_line_wins", "No line wins");
+    return out.length ? out.join("   |   ") : "";
   },
 
 

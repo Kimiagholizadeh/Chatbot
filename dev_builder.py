@@ -1237,6 +1237,10 @@ var SlotScene = cc.Scene.extend({
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
+    // Static bottom ribbon under the menu popup (from left edge to popup edge).
+    this.ui.menuRibbon = this._makePanel(84.5, 40, 169, 80, ["popup_panel_bg","auto_panel"], true);
+    this.uiLayer.addChild(this.ui.menuRibbon, 210);
+
     this._applyVolumeMode = function(mode){
       self._volumeMode = mode || "high";
       var vol = 1.0;
@@ -1264,7 +1268,7 @@ var SlotScene = cc.Scene.extend({
       if (self.ui.volumeButton._setState) self.ui.volumeButton._setState("normal");
     };
 
-    this.ui.volumeButton = this._makeImageButton(0, 60, "", function(){
+    this.ui.volumeButton = this._makeImageButton(10, 68, "", function(){
       self._unlockAudioOnce();
       var cur = self._volumeMode || "high";
       var next = "high";
@@ -1281,7 +1285,7 @@ var SlotScene = cc.Scene.extend({
     }, 132, 48);
     this.ui.settingsPanel.addChild(this.ui.volumeButton, 2);
 
-    this.ui.helpMenuButton = this._makeImageButton(0, 6, "", function(){
+    this.ui.helpMenuButton = this._makeImageButton(10, 8, "", function(){
       self._toggleInfoPanel();
     }, {
       normal:["btn_help"],
@@ -1290,12 +1294,12 @@ var SlotScene = cc.Scene.extend({
     }, 132, 48);
     this.ui.settingsPanel.addChild(this.ui.helpMenuButton, 2);
 
-    this.ui.settingsTextButton = this._makeButton(0, -48, "SET", function(){
+    this.ui.settingsTextButton = this._makeButton(10, -56, "SET", function(){
       self._toggleSettingsMenu(false);
     }, 126, 44);
     this.ui.settingsPanel.addChild(this.ui.settingsTextButton, 2);
 
-    this.ui.settingsCloseButton = this._makeImageButton(0, -102, "", function(){
+    this.ui.settingsCloseButton = this._makeImageButton(10, -120, "", function(){
       if (self.ui && self.ui.infoPanel && self.ui.infoPanel.isVisible && self.ui.infoPanel.isVisible()) self._toggleInfoPanel(false);
       else self._toggleSettingsMenu(false);
     }, {

@@ -1221,7 +1221,7 @@ var SlotScene = cc.Scene.extend({
     }, 70, 70);
     this.uiLayer.addChild(this.ui.settingsButton);
 
-    this.ui.settingsPanel = this._makePanel(64, 212, 170, 320, ["popup_panel_bg","auto_panel"]);
+    this.ui.settingsPanel = this._makePanel(64, 212, 184, 334, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1730,7 +1730,7 @@ var SlotScene = cc.Scene.extend({
       var gridCenterY = startY + ((rows - 1) * cellH) / 2;
       gridFrame.setPosition(gridCenterX, gridCenterY);
       // Add generous padding so frame encloses spinning/landing motion across all reel counts.
-      var framePadX = Math.max(30, Math.floor(cellW * 0.56));
+      var framePadX = Math.max(44, Math.floor(cellW * 0.76));
       var framePadY = Math.max(20, Math.floor(cellH * 0.34));
       var gridCoverW = ((reels - 1) * cellW + frameW) + framePadX * 2;
       var gridCoverH = ((rows - 1) * cellH + frameH) + framePadY * 2;
@@ -1792,8 +1792,8 @@ var SlotScene = cc.Scene.extend({
       if (cc.ClippingNode && cc.DrawNode) {
         try {
           var stencil = new cc.DrawNode();
-          var clipL = -frameW * 0.54;
-          var clipR = frameW * 0.54;
+          var clipL = -frameW * 0.68;
+          var clipR = frameW * 0.68;
           var clipB = -cellH * 0.52;
           var clipT = (rows - 1) * cellH + cellH * 0.52;
           stencil.drawRect(cc.p(clipL, clipB), cc.p(clipR, clipT), cc.color(255,255,255,255), 0, cc.color(255,255,255,255));
@@ -2510,7 +2510,13 @@ def build_dev_web_zip(
                 "btn_auto_active",
                 "btn_auto_spin", "btn_auto_spin_on", "btn_auto_spin_off",
                 "btn_auto_amt", "btn_auto_amt_on",
+                "btn_menu", "btn_menu_on", "btn_menu_off",
                 "btn_menu_close", "btn_menu_close_on", "btn_menu_close_off",
+                "btn_help", "btn_help_on",
+                "btn_vol_high", "btn_vol_high_on",
+                "btn_vol_off", "btn_vol_mute_on",
+                "btn_vol_low", "btn_vol_low_on",
+                "btn_vol_med", "btn_vol_med_on",
                 "btn_close_on_menu",
                 "btn_back", "btn_back_on",
                 "btn_quick_on", "btn_quick_off",

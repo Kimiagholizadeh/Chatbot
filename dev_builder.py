@@ -1221,7 +1221,7 @@ var SlotScene = cc.Scene.extend({
     }, 70, 70);
     this.uiLayer.addChild(this.ui.settingsButton);
 
-    this.ui.settingsPanel = this._makePanel(64, 212, 184, 334, ["popup_panel_bg","auto_panel"]);
+    this.ui.settingsPanel = this._makePanel(64, 236, 190, 410, ["popup_panel_bg","auto_panel"]);
     this.uiLayer.addChild(this.ui.settingsPanel, 220);
     this.ui.settingsPanel.setVisible(false);
 
@@ -1318,6 +1318,8 @@ var SlotScene = cc.Scene.extend({
   _toggleSettingsMenu: function(forceOpen){
     var show = (typeof forceOpen === "boolean") ? forceOpen : !(this.ui && this.ui.settingsPanel && this.ui.settingsPanel.isVisible());
     if (this.ui && this.ui.settingsPanel) this.ui.settingsPanel.setVisible(show);
+    // While popup menu is open, hide the menu trigger button.
+    if (this.ui && this.ui.settingsButton) this.ui.settingsButton.setVisible(!show);
     if (!show) this._toggleInfoPanel(false);
   },
 
@@ -1571,7 +1573,10 @@ var SlotScene = cc.Scene.extend({
     if (this.ui && this.ui.betPanelButton) this._setButtonDisabled(this.ui.betPanelButton, !!(this.busy || this._autoPanelOpen));
     if (this.ui && this.ui.speedModeButton) this._setButtonDisabled(this.ui.speedModeButton, !!(this.busy || this._autoPanelOpen || this._betPanelOpen));
     if (this.ui && this.ui.autoButton) this._setButtonDisabled(this.ui.autoButton, !!(this.busy || this._betPanelOpen));
-    if (this.ui && this.ui.settingsButton) this._setButtonDisabled(this.ui.settingsButton, !!(this.busy || this._spinActive || this._autoPanelOpen || this._betPanelOpen));
+    if (this.ui && this.ui.settingsButton) {
+      this._setButtonDisabled(this.ui.settingsButton, !!(this.busy || this._spinActive || this._autoPanelOpen || this._betPanelOpen));
+      this.ui.settingsButton.setVisible(!(this.ui && this.ui.settingsPanel && this.ui.settingsPanel.isVisible && this.ui.settingsPanel.isVisible()));
+    }
 
     var canAutoStart = (this._autoRemaining || 0) > 0;
     if (this.ui && this.ui.btnAutoSpin) this._setButtonDisabled(this.ui.btnAutoSpin, !canAutoStart);
@@ -1730,8 +1735,8 @@ var SlotScene = cc.Scene.extend({
       var gridCenterY = startY + ((rows - 1) * cellH) / 2;
       gridFrame.setPosition(gridCenterX, gridCenterY);
       // Add generous padding so frame encloses spinning/landing motion across all reel counts.
-      var framePadX = Math.max(44, Math.floor(cellW * 0.76));
-      var framePadY = Math.max(20, Math.floor(cellH * 0.34));
+      var framePadX = Math.max(58, Math.floor(cellW * 0.92));
+      var framePadY = Math.max(30, Math.floor(cellH * 0.52));
       var gridCoverW = ((reels - 1) * cellW + frameW) + framePadX * 2;
       var gridCoverH = ((rows - 1) * cellH + frameH) + framePadY * 2;
       this._fitSpriteTo(gridFrame, gridCoverW, gridCoverH, false);

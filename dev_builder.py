@@ -988,23 +988,23 @@ var SlotScene = cc.Scene.extend({
     this.ui.balanceTitle = new cc.LabelTTF("BALANCE", "Arial", 16);
     this.ui.balanceTitle.setColor(frameNumberColor);
     this.ui.balanceTitle.setAnchorPoint(0.5, 0.5);
-    this.ui.balanceTitle.setPosition(250, 54);
+    this.ui.balanceTitle.setPosition(250, 46);
     this.uiLayer.addChild(this.ui.balanceTitle, 4);
 
     this.ui.balanceAmount = new cc.LabelTTF("", "Arial", 18);
     this.ui.balanceAmount.setAnchorPoint(0.5, 0.5);
-    this.ui.balanceAmount.setPosition(250, 30);
+    this.ui.balanceAmount.setPosition(250, 22);
     this.uiLayer.addChild(this.ui.balanceAmount, 4);
 
     this.ui.spinTitle = new cc.LabelTTF("SPIN", "Arial", 16);
     this.ui.spinTitle.setColor(frameNumberColor);
     this.ui.spinTitle.setAnchorPoint(0.5, 0.5);
-    this.ui.spinTitle.setPosition(710, 54);
+    this.ui.spinTitle.setPosition(710, 46);
     this.uiLayer.addChild(this.ui.spinTitle, 4);
 
     this.ui.spinBetAmount = new cc.LabelTTF("", "Arial", 18);
     this.ui.spinBetAmount.setAnchorPoint(0.5, 0.5);
-    this.ui.spinBetAmount.setPosition(710, 30);
+    this.ui.spinBetAmount.setPosition(710, 22);
     this.uiLayer.addChild(this.ui.spinBetAmount, 4);
 
     // Dev-canvas layout tuned to preserve Panda stack structure without overlap:
@@ -1012,7 +1012,7 @@ var SlotScene = cc.Scene.extend({
     var spinAnchor = cc.p(886, 210);
     var speedAnchor = cc.p(852, 122);
     var betAnchor  = cc.p(918, 122);
-    var autoAnchor = cc.p(888, 56);
+    var autoAnchor = cc.p(888, 62);
     var popupCenter = cc.p(480, 165);
 
     this.ui.spinButtonsPanel = new cc.Node();
@@ -1068,7 +1068,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.autoSpinPanel = new cc.Node();
     this.ui.autoSpinPanel.setPosition(autoAnchor);
     this.ui.autoSpinPanel.setScale(0.45);
-    this.uiLayer.addChild(this.ui.autoSpinPanel);
+    this.uiLayer.addChild(this.ui.autoSpinPanel, 6);
 
     this.ui.autoButton = this._makeImageButton(0, 0, "AUTO", function(){
       self._unlockAudioOnce();
@@ -1217,7 +1217,7 @@ var SlotScene = cc.Scene.extend({
     this._registerPopupOutsideClick();
 
     // Settings menu button + slim vertical popup above it.
-    this.ui.settingsButton = this._makeImageButton(64, 56, "", function(){
+    this.ui.settingsButton = this._makeImageButton(64, 62, "", function(){
       self._unlockAudioOnce();
       self._toggleSettingsMenu();
     }, {
@@ -1238,7 +1238,7 @@ var SlotScene = cc.Scene.extend({
     this.ui.settingsPanel.setVisible(false);
 
     // Static bottom ribbon under the menu popup (from left edge to popup edge).
-    this.ui.menuRibbon = this._makePanel(480, 28, 960, 56, ["popup_panel_bg","auto_panel"], true);
+    this.ui.menuRibbon = this._makePanel(480, 28, 980, 56, ["popup_panel_bg","auto_panel"], true);
     this.uiLayer.addChild(this.ui.menuRibbon, 1);
 
     this._applyVolumeMode = function(mode){
